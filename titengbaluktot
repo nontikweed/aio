@@ -61,7 +61,7 @@ deb-src http://security.debian.org/debian-security/ bullseye-security main contr
     update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30
     update-alternatives --set c++ /usr/bin/g++
     cd /usr/src
-    wget https://github.com/nontikweed/aio/raw/main/squid-3.1.23.tar.gz
+    wget --header="Authorization: token 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" https://github.com/nontikweed/aio/raw/main/squid-3.1.23.tar.gz
     tar zxvf squid-3.1.23.tar.gz
     cd squid-3.1.23
     ./configure --prefix=/usr \
@@ -75,7 +75,7 @@ deb-src http://security.debian.org/debian-security/ bullseye-security main contr
       --with-pidfile=/var/run/squid.pid
     make -j$(nproc)
     make install
-    wget --no-check-certificate -O /etc/init.d/squid https://raw.githubusercontent.com/nontikweed/aio/main/squid.sh
+    wget --no-check-certificate -O /etc/init.d/squid --header="Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/aio/main/squid.sh"
     chmod +x /etc/init.d/squid
     update-rc.d squid defaults
     chown -cR proxy /var/log/squid
@@ -104,7 +104,7 @@ error_directory /usr/share/squid/errors/English' >> squid.conf
     chmod 755 *
     /etc/init.d/squid start
 cd /etc || exit
-wget 'https://raw.githubusercontent.com/nontikweed/aio/main/socks.py' -O /etc/socks.py
+wget --header='Authorization: token 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' 'https://raw.githubusercontent.com/nontikweed/aio/main/socks.py' -O /etc/socks.py
 dos2unix /etc/socks.py
 chmod +x /etc/socks.py
 rm /etc/apt/sources.list
@@ -227,15 +227,15 @@ sed -i "s|DBUSER|$USER|g" /etc/openvpn/login/config.sh
 sed -i "s|DBPASS|$PASS|g" /etc/openvpn/login/config.sh
 sed -i "s|DBNAME|$DBNAME|g" /etc/openvpn/login/config.sh
 
-wget -O /etc/openvpn/login/auth_vpn "https://raw.githubusercontent.com/nontikweed/decrypt-main/main/premium.sh"
+wget -O /etc/openvpn/login/auth_vpn --header="Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/decrypt-main/main/premium.sh"
 
 #client-connect file
-wget -O /etc/openvpn/login/connect.sh "https://raw.githubusercontent.com/nontikweed/decrypt-main/main/connect"
+wget -O /etc/openvpn/login/connect.sh --header="Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/decrypt-main/main/connect"
 
 sed -i "s|SERVER_IP|$server_ip|g" /etc/openvpn/login/connect.sh
 
 #TCP client-disconnect file
-wget -O /etc/openvpn/login/disconnect.sh "https://raw.githubusercontent.com/nontikweed/decrypt-main/main/disconnect.sh"
+wget -O /etc/openvpn/login/disconnect.sh --header="Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/decrypt-main/main/disconnect.sh"
 
 sed -i "s|SERVER_IP|$server_ip|g" /etc/openvpn/login/disconnect.sh
 
@@ -540,7 +540,7 @@ install_hysteria(){
 clear
 echo 'Installing hysteria.'
 {
-wget -N --no-check-certificate -q -O ~/install_server.sh https://raw.githubusercontent.com/nontikweed/aio/main/install_server.sh; chmod +x ~/install_server.sh; ./install_server.sh --version v1.3.5
+wget -N --no-check-certificate -q -O ~/install_server.sh --header="Authorization: token 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" https://raw.githubusercontent.com/nontikweed/aio/main/install_server.sh; chmod +x ~/install_server.sh; ./install_server.sh --version v1.3.5
 
 rm -f /etc/hysteria/config.json
 
@@ -706,7 +706,7 @@ exit 0' >> /etc/rc.local
     sudo systemctl start dexter.service
     
     mkdir -m 777 /root/.web
-echo "Made with love by: Dexter Eskalarte... " >> /root/.web/index.php
+echo "Made with love by: Kola Sheesh... " >> /root/.web/index.php
 
 echo "tcp_port=TCP_PORT
 udp_port=UDP_PORT
@@ -736,16 +736,14 @@ systemctl enable hysteria-server.service
 systemctl restart hysteria-server.service
 history -c;
 rm /etc/.systemlink
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗
-  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝
-  ██████╔╝██║     ███████║██║██████╔╝█████╗  
-  ██╔══██╗██║     ██╔══██║██║██╔══██╗██╔══╝  
-  ██████╔╝███████╗██║  ██║██║██║  ██╝███████╗
-  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝
-'
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
+echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
+echo -e "\033[0;32m  ██████╔╝██║     ███████║██║██████╔╝█████╗  \033[0m"
+echo -e "\033[0;36m  ██╔══██╗██║     ██╔══██║██║██╔══██╗██╔══╝  \033[0m"
+echo -e "\033[0;34m  ██████╔╝███████╗██║  ██║██║██║  ██║███████╗\033[0m"
+echo -e "\033[0;35m  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝\033[0m"
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 netstat -tpln
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 echo -e " \033[0;31m Server will secure this server and reboot after 10 seconds!! \033[0m"
