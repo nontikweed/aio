@@ -1,0 +1,172 @@
+#!/bin/bash
+# Made By Nontikweed
+clear
+
+# Check if Termux storage is enabled
+if [ ! -d "/data/data/com.termux/files/home/storage" ]; then
+  # Storage is not set up, ask the user to enable it
+  echo -e "\e[1;33mTermux storage permission is not enabled. Enabling now...\e[0m"
+  termux-setup-storage
+  # You might want to wait for the user to grant the permission
+  read -p "Press Enter once you have granted storage permission..."
+else
+  echo -e "\e[1;32mTermux storage permission is already enabled.\e[0m"
+fi
+
+# Check for dig command and install dnsutils if not present
+if ! command -v dig &> /dev/null; then
+    echo -e "\e[1;33mdig command could not be found. Attempting to install dnsutils...\e[0m"
+    
+    # Update the package list
+    pkg update
+    
+    # Install dnsutils
+    pkg install -y dnsutils
+    
+    # Check again after attempting to install
+    if ! command -v dig &> /dev/null; then
+        echo -e "\e[1;31mFailed to install dnsutils. Please install it manually using 'pkg install dnsutils'.\e[0m"
+        exit 1
+    else
+        echo -e "\e[1;32mdnsutils successfully installed.\e[0m"
+    fi
+fi
+
+function endscript() {
+  exit 1
+}
+
+trap endscript 2 15
+
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
+echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
+echo -e "\033[0;32m  ██████╔╝██║     ███████║██║██████╔╝█████╗  \033[0m"
+echo -e "\033[0;36m  ██╔══██╗██║     ██╔══██║██║██╔══██╗██╔══╝  \033[0m"
+echo -e "\033[0;34m  ██████╔╝███████╗██║  ██║██║██║  ██║███████╗\033[0m"
+echo -e "\033[0;35m  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝\033[0m"
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+
+# Check for curl and install if not found
+if ! command -v curl &> /dev/null; then
+    echo -e "\e[1;33mcurl could not be found, attempting to install...\e[0m"
+    pkg install -y curl
+    if [ $? -ne 0 ]; then
+        echo -e "\e[1;31mFailed to install curl. Please install it manually and rerun the script.\e[0m"
+        exit 1
+    else
+        echo -e "\e[1;32mcurl has been installed successfully.\e[0m"
+    fi
+fi
+
+DNS_IPS_URL="https://raw.githubusercontent.com/nontikweed/blaire69/master/dns_ips.txt"
+NAMESERVERS_URL="https://raw.githubusercontent.com/nontikweed/blaire69/master/nameservers.txt"
+
+# Delete the old DNS IP addresses file if it exists
+rm -f dns_ips.txt
+
+# Download DNS IP addresses from GitHub silently
+if ! curl -s -o dns_ips.txt "${DNS_IPS_URL}" 2>/dev/null; then
+    echo -e "\e[1;31mFailed to download DNS IP addresses from GitHub.\e[0m"
+    exit 1
+fi
+
+# Delete the old nameservers file if it exists
+rm -f nameservers.txt
+
+# Download nameservers from GitHub silently
+if ! curl -s -o nameservers.txt "${NAMESERVERS_URL}" 2>/dev/null; then
+    echo -e "\e[1;31mFailed to download nameservers from GitHub.\e[0m"
+    exit 1
+fi
+
+# Read the downloaded files into arrays
+readarray -t DNS_IPS < dns_ips.txt
+readarray -t NAME_SERVERS < nameservers.txt
+
+DIG_EXEC="DEFAULT"
+CUSTOM_DIG=/data/data/com.termux/files/home/go/bin/fastdig
+VER=0.3
+
+case "${DIG_EXEC}" in
+  DEFAULT|D)
+    _DIG="$(command -v dig)"
+    ;;
+  CUSTOM|C)
+    _DIG="${CUSTOM_DIG}"
+    ;;
+esac
+
+if [ ! $(command -v ${_DIG}) ]; then
+  printf "%b" "Dig command failed to run, please install dig(dnsutils) or check the DIG_EXEC & CUSTOM_DIG variable.\n" && exit 1
+fi
+
+# Initialize the counter
+count=1
+
+check(){
+  local border_color="\e[95m"  # Light magenta color
+  local success_color="\e[92m"  # Light green color
+  local fail_color="\e[91m"    # Light red color
+  local header_color="\e[96m"  # Light cyan color
+  local reset_color="\e[0m"    # Reset to default terminal color
+  local padding=" "            # Padding for aesthetic
+  local max_jobs=10            # Maximum number of parallel jobs
+
+  # Determine the width for the border based on the content
+  local border_width=50
+
+  # Header
+  printf "${border_color}%-${border_width}s${reset_color}\n" "┌──────────────────────────────────────────────┐"
+  printf "${border_color}│${header_color}%-${border_width}s${reset_color}\n" " DADDYJO - DNS STATUS CHECKER  "
+  printf "${border_color}%-${border_width}s${reset_color}\n" "├──────────────────────────────────────────────┤"
+  
+  # Results
+  local job_count=0
+  for T in "${DNS_IPS[@]}"; do
+    for R in "${NAME_SERVERS[@]}"; do
+      (
+        result=$(${_DIG} @${T} ${R} +short)
+        status_message="STATUS : "
+        if [ -z "$result" ]; then
+          STATUS="${fail_color}Failed${reset_color}"
+        else
+          STATUS="${success_color}Success${reset_color}"
+        fi
+        printf "${border_color}│${reset_color} %-${border_width}s${reset_color}\n" "DNS IP: ${T}"
+        printf "${border_color}│${reset_color} %-${border_width}s${reset_color}\n" "NS : ${R}"
+        printf "${border_color}│${reset_color} %-${border_width}s${reset_color}\n" "${status_message}${STATUS}"
+      ) &
+
+      # Increment job count and wait if we've reached max jobs
+      ((job_count++))
+      if ((job_count >= max_jobs)); then
+        wait -n
+        ((job_count--))
+      fi
+    done
+  done
+
+  # Wait for any remaining background jobs to finish
+  wait
+
+  # Check count and Loop Delay
+  printf "${border_color}%-${border_width}s${reset_color}\n" "├──────────────────────────────────────────────┤"
+  printf "${border_color}│${reset_color} %-${border_width}s${reset_color}\n" "Check count: ${count}"
+  
+  # Footer
+  printf "${border_color}%-${border_width}s${reset_color}\n" "└──────────────────────────────────────────────┘"
+}
+
+# Self-delete the script
+rm -- "$0"
+clear
+
+# Main loop
+while true; do
+  check
+  ((count++))  # Increment the counter
+done
+
+exit 0
+
