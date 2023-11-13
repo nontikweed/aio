@@ -1,9 +1,9 @@
 #!/bin/bash
 #Script Variables
-HOST='66.45.249.85'
-USER='radzglob_radzglob_trinity'
-PASS='S3TfsD253a8ZSPnL'
-DBNAME='radzglob_trinity'
+HOST='185.61.137.171'
+USER='daddyjoh_test111'
+PASS='daddyjoh_test111'
+DBNAME='daddyjoh_test111'
 
 rm -rf install_server.sh*
 
