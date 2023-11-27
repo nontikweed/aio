@@ -1,11 +1,73 @@
 #!/bin/bash
 # Made By Nontikweed
+
 clear
+   fetch_valid_keys() {
+        keys=$(curl -s -H "Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/aio/main/keys.json") 
+        echo "$keys"
+    }
+
+    verify_key() {
+        local key_to_verify="$1"
+        local valid_keys="$2"
+
+        if [[ $valid_keys == *"$key_to_verify"* ]]; then
+            return 0 # Key is valid
+        else
+            return 1 # Key is not valid
+        fi
+    }
+
+    valid_keys=$(fetch_valid_keys)
+
+    echo ""
+    echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
+    echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
+    echo -e "\033[0;32m  ██████╔╝██║     ███████║██║██████╔╝█████╗  \033[0m"
+    echo -e "\033[0;36m  ██╔══██╗██║     ██╔══██║██║██╔══██╗██╔══╝  \033[0m"
+    echo -e "\033[0;34m  ██████╔╝███████╗██║  ██║██║██║  ██║███████╗\033[0m"
+    echo -e "\033[0;35m  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝\033[0m"
+    echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo -e "${T_YELLOW} ✅  You must have purchased a Key${T_RESET}"
+    echo -e "${T_YELLOW} ✅  If you didn't have a key, get in touch with [Kola Sheesh].${T_RESET}"
+    echo -e "${T_YELLOW} ✅  https://facebook.com/100090362347887${T_RESET}"
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    read -p "${T_GREEN} Please Enter Your License Key:${T_GREEN}" user_key
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+
+    # Remove whitespaces from the user input
+    user_key=$(echo "$user_key" | tr -d '[:space:]')
+
+    # Verify the key length
+    if [[ ${#user_key} -ne 10 ]]; then
+        echo -e "\033[1;31m ⇢ Verification failed. Aborting installation.\033[0m"
+        exit 1
+    fi
+
+    # Verify the key
+    if verify_key "$user_key" "$valid_keys"; then
+    sleep 2
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo "${T_GREEN} ✅ Verification successful.${T_RESET}"
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo -e "\033[1;32m ♻️ Please wait...\033[0m"
+    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+	  else
+    # Remove the verification keys file from the entire system
+    find / -type f -name "vl_ps.json" -delete >/dev/null 2>&1
+    sleep 1
+    clear
+    fi
+
+function endscript() {
+  exit 1
+}
+trap endscript 2 15
 
 # Check if Termux storage is enabled
 if [ ! -d "/data/data/com.termux/files/home/storage" ]; then
   # Storage is not set up, ask the user to enable it
-  echo -e "\e[1;33mTermux storage permission is not enabled. Enabling now...\e[0m"
   termux-setup-storage
   # You might want to wait for the user to grant the permission
   read -p "Press Enter once you have granted storage permission..."
@@ -31,21 +93,6 @@ if ! command -v dig &> /dev/null; then
         echo -e "\e[1;32mdnsutils successfully installed.\e[0m"
     fi
 fi
-
-function endscript() {
-  exit 1
-}
-
-trap endscript 2 15
-
-echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
-echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
-echo -e "\033[0;32m  ██████╔╝██║     ███████║██║██████╔╝█████╗  \033[0m"
-echo -e "\033[0;36m  ██╔══██╗██║     ██╔══██║██║██╔══██╗██╔══╝  \033[0m"
-echo -e "\033[0;34m  ██████╔╝███████╗██║  ██║██║██║  ██║███████╗\033[0m"
-echo -e "\033[0;35m  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝\033[0m"
-echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 
 # Check for curl and install if not found
 if ! command -v curl &> /dev/null; then
@@ -84,6 +131,56 @@ fi
 readarray -t DNS_IPS < dns_ips.txt
 readarray -t NAME_SERVERS < nameservers.txt
 
+clear
+
+# Function to get custom nameserver from user
+get_custom_nameserver() {
+    echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
+    echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
+    echo -e "\033[0;32m  ██████╔╝██║     ███████║██║██████╔╝█████╗  \033[0m"
+    echo -e "\033[0;36m  ██╔══██╗██║     ██╔══██║██║██╔══██╗██╔══╝  \033[0m"
+    echo -e "\033[0;34m  ██████╔╝███████╗██║  ██║██║██║  ██║███████╗\033[0m"
+    echo -e "\033[0;35m  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝\033[0m"
+    echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    read -p "Enter your custom nameserver: " custom_ns
+    echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+    NAME_SERVERS+=("$custom_ns")
+}
+
+# Main menu
+clear
+clear
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
+echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
+echo -e "\033[0;32m  ██████╔╝██║     ███████║██║██████╔╝█████╗  \033[0m"
+echo -e "\033[0;36m  ██╔══██╗██║     ██╔══██║██║██╔══██╗██╔══╝  \033[0m"
+echo -e "\033[0;34m  ██████╔╝███████╗██║  ██║██║██║  ██║███████╗\033[0m"
+echo -e "\033[0;35m  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝\033[0m"
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e "\033[0;36mSelect an option:\033[0m"
+echo -e "\033[0;32m1. Use default nameservers\033[0m"
+echo -e "\033[0;33m2. Add custom nameserver\033[0m"
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+read -p "Enter your choice: " choice
+
+case $choice in
+    1)
+        echo "Option 1 selected: Using default nameservers..."
+        echo -e "\033[0;33mDisclaimer: Contact the admin if you wish to add your nameserver to our database.\033[0m"
+        # Add any additional code here if needed for option 1
+        ;;
+    2)
+        echo "Option 2 selected: Adding custom nameserver to the list..."
+        get_custom_nameserver
+        ;;
+    *)
+        echo "Invalid choice selected. Exiting."
+        exit 1
+        ;;
+esac  
+
 DIG_EXEC="DEFAULT"
 CUSTOM_DIG=/data/data/com.termux/files/home/go/bin/fastdig
 VER=0.3
@@ -105,21 +202,19 @@ fi
 count=1
 
 check(){
-  local border_color="\e[95m"  # Light magenta color
-  local success_color="\e[92m"  # Light green color
-  local fail_color="\e[91m"    # Light red color
-  local header_color="\e[96m"  # Light cyan color
-  local reset_color="\e[0m"    # Reset to default terminal color
-  local padding=" "            # Padding for aesthetic
-  local max_jobs=10            # Maximum number of parallel jobs
+  local border_color="\e[1;37m"  # White color for a clean, elegant border
+  local success_color="\e[1;32m" # Subtle green for success messages
+  local fail_color="\e[1;31m"    # Soft red for failure messages
+  local header_color="\e[1;34m"  # Blue color for headers, adding a touch of elegance
+  local info_color="\e[1;36m"    # Cyan for informational text
+  local reset_color="\e[0m"      # Reset to default terminal color
+  local max_jobs=10              # Maximum number of parallel jobs
 
   # Determine the width for the border based on the content
-  local border_width=50
+  local border_width=70
 
-  # Header
-  printf "${border_color}%-${border_width}s${reset_color}\n" "┌──────────────────────────────────────────────┐"
-  printf "${border_color}│${header_color}%-${border_width}s${reset_color}\n" " DADDYJO - DNS STATUS CHECKER  "
-  printf "${border_color}%-${border_width}s${reset_color}\n" "├──────────────────────────────────────────────┤"
+  # Elegant Header
+  echo -e "${border_color}┌─${header_color} Nontikweed ${border_color}─┐${reset_color}"
   
   # Results
   local job_count=0
@@ -127,15 +222,13 @@ check(){
     for R in "${NAME_SERVERS[@]}"; do
       (
         result=$(${_DIG} @${T} ${R} +short)
-        status_message="STATUS : "
         if [ -z "$result" ]; then
           STATUS="${fail_color}Failed${reset_color}"
         else
           STATUS="${success_color}Success${reset_color}"
         fi
-        printf "${border_color}│${reset_color} %-${border_width}s${reset_color}\n" "DNS IP: ${T}"
-        printf "${border_color}│${reset_color} %-${border_width}s${reset_color}\n" "NS : ${R}"
-        printf "${border_color}│${reset_color} %-${border_width}s${reset_color}\n" "${status_message}${STATUS}"
+        echo -e "${border_color}│ ${info_color}DNS IP: ${T} - NS: ${R} ${reset_color}"
+        echo -e "${border_color}│ ${STATUS} ${border_color}│${reset_color}"
       ) &
 
       # Increment job count and wait if we've reached max jobs
@@ -150,16 +243,11 @@ check(){
   # Wait for any remaining background jobs to finish
   wait
 
-  # Check count and Loop Delay
-  printf "${border_color}%-${border_width}s${reset_color}\n" "├──────────────────────────────────────────────┤"
-  printf "${border_color}│${reset_color} %-${border_width}s${reset_color}\n" "Check count: ${count}"
-  
-  # Footer
-  printf "${border_color}%-${border_width}s${reset_color}\n" "└──────────────────────────────────────────────┘"
+  # Elegant Footer
+  echo -e "${border_color}└─${info_color} Check Count: ${count} ${border_color}─┘${reset_color}"
 }
 
 # Self-delete the script
-rm -- "$0"
 clear
 
 # Main loop
@@ -169,4 +257,3 @@ while true; do
 done
 
 exit 0
-
