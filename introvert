@@ -2,58 +2,6 @@
 # Made By Nontikweed
 
 clear
-   fetch_valid_keys() {
-        keys=$(curl -s -H "Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/aio/main/keys.json") 
-        echo "$keys"
-    }
-
-    verify_key() {
-        local key_to_verify="$1"
-        local valid_keys="$2"
-
-        if [[ $valid_keys == *"$key_to_verify"* ]]; then
-            return 0 # Key is valid
-        else
-            return 1 # Key is not valid
-        fi
-    }
-
-    valid_keys=$(fetch_valid_keys)
-
-    echo ""
-    echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-    figlet -k Introvert | awk '{gsub(/./,"\033[3"int(rand()*5+1)"m&\033[0m")}1'
-    echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-    echo -e "${T_YELLOW} ✅  You must have purchased a Key${T_RESET}"
-    echo -e "${T_YELLOW} ✅  If you didn't have a key, get in touch with [Kola Sheesh].${T_RESET}"
-    echo -e "${T_YELLOW} ✅  https://facebook.com/100090362347887${T_RESET}"
-    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-    read -p "${T_GREEN} Please Enter Your License Key:${T_GREEN}" user_key
-    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-
-    # Remove whitespaces from the user input
-    user_key=$(echo "$user_key" | tr -d '[:space:]')
-
-    # Verify the key length
-    if [[ ${#user_key} -ne 10 ]]; then
-        echo -e "\033[1;31m ⇢ Verification failed. Aborting installation.\033[0m"
-        exit 1
-    fi
-
-    # Verify the key
-    if verify_key "$user_key" "$valid_keys"; then
-    sleep 2
-    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-    echo "${T_GREEN} ✅ Verification successful.${T_RESET}"
-    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-    echo -e "\033[1;32m ♻️ Please wait...\033[0m"
-    echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-	  else
-    # Remove the verification keys file from the entire system
-    find / -type f -name "vl_ps.json" -delete >/dev/null 2>&1
-    sleep 1
-    clear
-    fi
 
 function endscript() {
   exit 1
