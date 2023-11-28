@@ -18,6 +18,14 @@ else
   echo -e "\e[1;32mTermux storage permission is already enabled.\e[0m"
 fi
 
+# Check if figlet is installed
+if ! command -v figlet &> /dev/null; then
+    echo -e "\e[1;33mFiglet is not installed. Installing now...\e[0m"
+    pkg install figlet -y
+else
+    echo -e "\e[1;32mFiglet is already installed.\e[0m"
+fi
+
 # Check for dig command and install dnsutils if not present
 if ! command -v dig &> /dev/null; then
     echo -e "\e[1;33mdig command could not be found. Attempting to install dnsutils...\e[0m"
