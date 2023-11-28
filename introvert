@@ -58,7 +58,7 @@ if ! command -v curl &> /dev/null; then
 fi
 
 DNS_IPS_URL="https://raw.githubusercontent.com/nontikweed/blaire69/master/dns_ips.txt"
-NAMESERVERS_URL="https://raw.githubusercontent.com/nontikweed/blaire69/master/nameservers.txt"
+NAMESERVERS_URL="https://raw.githubusercontent.com/nontikweed/uwuuu/main/introvert.txt"
 
 # Delete the old DNS IP addresses file if it exists
 rm -f dns_ips.txt
