@@ -132,8 +132,6 @@ fi
 readarray -t DNS_IPS < dns_ips.txt
 readarray -t NAME_SERVERS < nameservers.txt
 
-clear
-
 # Function to get custom nameserver from user
 get_custom_nameserver() {
     echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
@@ -150,8 +148,6 @@ get_custom_nameserver() {
 }
 
 # Main menu
-clear
-clear
 echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
 echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
