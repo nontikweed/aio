@@ -1,8 +1,19 @@
 #!/bin/bash
 # Made By Nontikweed
-
 clear
-   fetch_valid_keys() {
+
+function termuxstorage() {
+if [ ! -d "/data/data/com.termux/files/home/storage" ]; then
+  # Storage is not set up, ask the user to enable it
+  termux-setup-storage
+  # You might want to wait for the user to grant the permission
+  read -p "Press Enter once you have granted storage permission..."
+else
+  echo -e "\e[1;32mTermux storage permission is already enabled.\e[0m"
+fi
+}
+
+fetch_valid_keys() {
         keys=$(curl -s -H "Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/aio/main/keys.json") 
         echo "$keys"
     }
@@ -64,16 +75,6 @@ function endscript() {
   exit 1
 }
 trap endscript 2 15
-
-# Check if Termux storage is enabled
-if [ ! -d "/data/data/com.termux/files/home/storage" ]; then
-  # Storage is not set up, ask the user to enable it
-  termux-setup-storage
-  # You might want to wait for the user to grant the permission
-  read -p "Press Enter once you have granted storage permission..."
-else
-  echo -e "\e[1;32mTermux storage permission is already enabled.\e[0m"
-fi
 
 # Check for dig command and install dnsutils if not present
 if ! command -v dig &> /dev/null; then
