@@ -249,6 +249,7 @@ check(){
 }
 
 # Self-delete the script
+termuxstorage
 clear
 
 # Main loop
