@@ -6,8 +6,6 @@ USER='daddyjoh_test111'
 PASS='daddyjoh_test111'
 DBNAME='daddyjoh_test111'
 
-rm -rf install_server.sh*
-
 #PORT OPENVPN
 PORT_TCP='1194';
 PORT_UDP='53';
@@ -524,13 +522,13 @@ wget -N --no-check-certificate -q -O ~/install_server.sh --header="Authorization
 rm -f /etc/hysteria/config.json
 
 echo '{
-  "listen": ":6969",
+  "listen": ":5666",
   "cert": "/etc/hysteria/hysteria.crt",
   "key": "/etc/hysteria/hysteria.key",
   "up_mbps": 100,
   "down_mbps": 100,
   "disable_udp": false,
-  "obfs": "nontikweed",
+  "obfs": "blaire",
   "auth": {
     "mode": "passwords",
     "config": ["blaire"]
@@ -727,6 +725,7 @@ netstat -tpln
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 echo -e " \033[0;31m Server will secure this server and reboot after 10 seconds!! \033[0m"
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+rm -rf install_server.sh*
 sleep 10
 reboot
 }
