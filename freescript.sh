@@ -1,11 +1,12 @@
 #!/bin/bash
 #Script Variables
 
-HOST='185.61.137.171'
-USER='daddyjoh_test111'
-PASS='daddyjoh_test111'
-DBNAME='daddyjoh_test111'
-
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+ 
 #PORT OPENVPN
 PORT_TCP='1194';
 PORT_UDP='53';
@@ -23,8 +24,77 @@ echo -e "\033[0;34m  ██████╔╝███████╗██║  
 echo -e "\033[0;35m  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝\033[0m"
 echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 
-install_require () {
+ssh() {
+# Backup
+cp /etc/ssh/sshd_config /etc/ssh/sshd_config_backup
+   
+# Removing some duplicated sshd server configs
+rm -f /etc/ssh/sshd_config
+ 
+ # Creating a SSH server config using cat eof tricks
+ cat <<blairessh > /etc/ssh/sshd_config
+Port 22
+Port 225
+ListenAddress 0.0.0.0
+Protocol 2
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_dsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+SyslogFacility AUTH
+LogLevel INFO
+PermitRootLogin yes
+StrictModes yes
+PubkeyAuthentication yes
+IgnoreRhosts yes
+HostbasedAuthentication no
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+PasswordAuthentication yes
+X11Forwarding yes
+X11DisplayOffset 10
+PrintMotd no
+PrintLastLog yes
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/openssh/sftp-server
+UsePAM yes
+Banner /etc/banner
+TCPKeepAlive yes
+DebianBanner no
+ClientAliveInterval 120
+ClientAliveCountMax 2
+UseDNS no
+blairessh
 
+ # Download our SSH Banner
+ rm -f /etc/banner
+ wget -qO /etc/banner "https://raw.githubusercontent.com/nontikweed/blaire69/master/banner"
+ dos2unix -q /etc/banner
+
+ # My workaround code to remove `BAD Password error` from passwd command, it will fix password-related error on their ssh accounts.
+ sed -i '/password\s*requisite\s*pam_cracklib.s.*/d' /etc/pam.d/common-password
+ sed -i 's/use_authtok //g' /etc/pam.d/common-password
+
+ # Some command to identify null shells when you tunnel through SSH or using Stunnel, it will fix user/pass authentication error on HTTP Injector, KPN Tunnel, eProxy, SVI, HTTP Proxy Injector etc ssh/ssl tunneling apps.
+ sed -i '/\/bin\/false/d' /etc/shells
+ sed -i '/\/usr\/sbin\/nologin/d' /etc/shells
+ echo '/bin/false' >> /etc/shells
+ echo '/usr/sbin/nologin' >> /etc/shells
+ 
+ # Restarting openssh service
+ status=$(systemctl is-active ssh)
+
+# Check if the service is active
+if [ "$status" = "active" ]; then
+  echo "SSH service has been successfully restarted."
+else
+  echo "Failed to restart SSH service."
+fi
+}
+
+install_require () {
+clear
+echo 'Installing Dependencies.'
+{    
 export DEBIAN_FRONTEND=noninteractive
 apt update
 apt install -y curl wget cron python-minimal libpython-stdlib
@@ -33,24 +103,93 @@ apt install -y openvpn netcat httpie php neofetch vnstat
 apt install -y screen squid stunnel4 dropbear gnutls-bin python
 apt install -y dos2unix nano unzip jq virt-what net-tools default-mysql-client
 apt install -y mlocate dh-make libaudit-dev build-essential fail2ban
-#clear
-#}&>/dev/null
+echo "All requried packages installed."
+sleep 5
 clear
+}&>/dev/null
+}
+
+cloudfare() {
+apt-get install -y jq > /dev/null 2>&1
+
+print_label() {
+  echo -e "${BLUE}[${NC}${2}${BLUE}]${NC} ${1}"
+}
+
+# Function to simulate an installation progress
+simulate_install() {
+  local total_steps=5
+  local current_step=0
+
+  # Print initial label without a newline
+  echo -ne "${BLUE}[Action]${NC} Installing... ["
+
+  # Simulate installation progress
+  while [ $current_step -le $total_steps ]; do
+    # Move the cursor back to the beginning of the progress indicator
+    echo -ne "\r${BLUE}[Action]${NC} Installing... ["
+    case $current_step in
+      0) echo -ne "${NC}10%" ;;
+      1) echo -ne "${NC}25%" ;;
+      2) echo -ne "${NC}40%" ;;
+      3) echo -ne "${NC}60%" ;;
+      4) echo -ne "${NC}80%" ;;
+      5) echo -ne "${NC}100%" ;;
+    esac
+    sleep 1 # Pause for effect
+    current_step=$((current_step + 1))
+  done
+  echo -e "${NC}] Done!"
+}
+
+# Your actual API key, email, and zone ID
+API_KEY="c4eddb868ade3231ce5ffad078ee28da82b9f"
+EMAIL="aerronwazi@gmail.com"
+ZONE_ID="861778cc74cbd65cbbce8119857ab172"
+
+# Process steps
+print_label "Running DNS maker.." "Info"
+
+# Generate random subdomain
+COUNTRY_CODE=$(curl -s https://ipinfo.io/country)
+RANDOM_SUBDOMAIN=$(shuf -i 100000-999999 -n 1)
+
+# Subdomain details
+RECORD_NAME="$COUNTRY_CODE$RANDOM_SUBDOMAIN"
+RECORD_TYPE="A"
+RECORD_CONTENT=$(curl -s ifconfig.me)
+RECORD_TTL=120
+PROXIED=false
+
+# NS record details
+NS_SERVER="dns.$COUNTRY_CODE$RANDOM_SUBDOMAIN"
+
+# API endpoint and data for subdomain (A record)
+API_ENDPOINT="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
+
+# Creating A record
+print_label "Creating A record for subdomain" "Action"
+DATA="{\"type\":\"$RECORD_TYPE\",\"name\":\"$RECORD_NAME\",\"content\":\"$RECORD_CONTENT\",\"ttl\":$RECORD_TTL,\"proxied\":$PROXIED}"
+RESPONSE=$(curl -s -X POST $API_ENDPOINT -H "X-Auth-Email: $EMAIL" -H "X-Auth-Key: $API_KEY" -H "Content-Type: application/json" --data "$DATA")
+NAME=$(echo "$RESPONSE" | jq -r '.result.name')
+
+# Creating NS record
+print_label "Creating NS record" "Action"
+DATA="{\"type\":\"NS\",\"name\":\"$NS_SERVER\",\"content\":\"$NAME\",\"ttl\":3600}"
+RESPONSE=$(curl -s -X POST $API_ENDPOINT -H "X-Auth-Email: $EMAIL" -H "X-Auth-Key: $API_KEY" -H "Content-Type: application/json" --data "$DATA")
+NS_NAME=$(echo "$RESPONSE" | jq -r '.result.name')
+
+# Simulate installing process
+simulate_install
+
+# DNS Record Information
+echo "$NS_NAME" > /root/ns.txt
 }
 
 install_squid(){
-#clear
-#echo 'Installing proxy.'
-#{
-#echosudo cp /etc/apt/sources.list /etc/apt/sources.list_backup
-#echoecho "deb http://deb.debian.org/debian bullseye main contrib non-free
-#echodeb-src http://deb.debian.org/debian bullseye main contrib non-free
-#echodeb http://deb.debian.org/debian bullseye-updates main contrib non-free
-#echodeb-src http://deb.debian.org/debian bullseye-updates main contrib non-free
-#echodeb http://deb.debian.org/debian bullseye-backports main contrib non-free
-#echodeb-src http://deb.debian.org/debian bullseye-backports main contrib non-free
-#echodeb http://security.debian.org/debian-security/ bullseye-security main contrib non-free
-#echodeb-src http://security.debian.org/debian-security/ bullseye-security main contrib non-free" >> /etc/apt/sources.list
+clear
+echo 'Installing proxy.'
+{
     apt update
     apt install -y gcc-4.9 g++-4.9
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10
@@ -60,7 +199,7 @@ install_squid(){
     update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30
     update-alternatives --set c++ /usr/bin/g++
     cd /usr/src
-    wget --header="Authorization: token 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" https://github.com/nontikweed/aio/raw/main/squid-3.1.23.tar.gz
+    wget --header="Authorization: token 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" https://raw.githubusercontent.com/nontikweed/aio/main/squid-3.1.23.tar.gz
     tar zxvf squid-3.1.23.tar.gz
     cd squid-3.1.23
     ./configure --prefix=/usr \
@@ -81,7 +220,7 @@ install_squid(){
     squid -z
     cd /etc/squid/
     rm squid.conf
-    echo "acl Dexter dst `curl -s https://api.ipify.org`" >> squid.conf
+    echo "acl blaire dst `curl -s https://api.ipify.org`" >> squid.conf
     echo 'http_port 8080
 http_port 8181
 visible_hostname Proxy
@@ -90,24 +229,25 @@ acl HEAD method HEAD
 acl POST method POST
 acl GET method GET
 acl CONNECT method CONNECT
-http_access allow Dexter
+http_access allow blaire
 http_reply_access allow all
 http_access deny all
 icp_access allow all
 always_direct allow all
-visible_hostname Dexter-Proxy
+visible_hostname blaire-Proxy
 error_directory /usr/share/squid/errors/English' >> squid.conf
     cd /usr/share/squid/errors/English
     rm ERR_INVALID_URL
-    echo '<!--DexterEskalarte--><!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SECURE PROXY</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"/><link rel="stylesheet" href="https://bootswatch.com/4/slate/bootstrap.min.css" media="screen"><link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"><style>body{font-family: "Press Start 2P", cursive;}.fn-color{color: #ffff; background-image: -webkit-linear-gradient(92deg, #f35626, #feab3a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-animation: hue 5s infinite linear;}@-webkit-keyframes hue{from{-webkit-filter: hue-rotate(0deg);}to{-webkit-filter: hue-rotate(-360deg);}}</style></head><body><div class="container" style="padding-top: 50px"><div class="jumbotron"><h1 class="display-3 text-center fn-color">SECURE PROXY</h1><h4 class="text-center text-danger">SERVER</h4><p class="text-center">😍 %w 😍</p></div></div></body></html>' >> ERR_INVALID_URL
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SECURE PROXY</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"/><link rel="stylesheet" href="https://bootswatch.com/4/slate/bootstrap.min.css" media="screen"><link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"><style>body{font-family: "Press Start 2P", cursive;}.fn-color{color: #ffff; background-image: -webkit-linear-gradient(92deg, #f35626, #feab3a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-animation: hue 5s infinite linear;}@-webkit-keyframes hue{from{-webkit-filter: hue-rotate(0deg);}to{-webkit-filter: hue-rotate(-360deg);}}</style></head><body><div class="container" style="padding-top: 50px"><div class="jumbotron"><h1 class="display-3 text-center fn-color">SECURE PROXY</h1><h4 class="text-center text-danger">SERVER</h4><p class="text-center">😍 %w 😍</p></div></div></body></html>' >> ERR_INVALID_URL
     chmod 755 *
-    /etc/init.d/squid start
+        
 cd /etc || exit
 wget --header='Authorization: token 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' 'https://raw.githubusercontent.com/nontikweed/aio/main/socks.py' -O /etc/socks.py
 dos2unix /etc/socks.py
 chmod +x /etc/socks.py
-rm /etc/apt/sources.list
-sudo cp /etc/apt/sources.list_backup /etc/apt/sources.list
+echo "Sucessfully Installing SquidProxy."
+sleep 5
+}&>/dev/null
 }
 
 install_openvpn()
@@ -127,7 +267,7 @@ DNSStubListener=no' >> /etc/systemd/resolved.conf
 
 echo '# OpenVPN UDP
 port PORT_UDP
-proto tcp
+proto udp
 dev tun
 server 10.20.0.0 255.255.0.0
 ca /etc/openvpn/easy-rsa/keys/ca.crt
@@ -167,8 +307,7 @@ status openvpn-status.log
 log tcp.log
 verb 3
 ncp-disable
-cipher none
-auth none > /etc/openvpn/server.conf
+cipher none' > /etc/openvpn/server.conf
 
 sed -i "s|PORT_UDP|$PORT_UDP|g" /etc/openvpn/server.conf
 
@@ -214,8 +353,9 @@ status openvpn-status.log
 log tcp.log
 verb 3
 ncp-disable
-cipher none
-auth none' > /etc/openvpn/server2.conf
+cipher none' > /etc/openvpn/server2.conf
+
+sed -i "s|PORT_TCP|$PORT_TCP|g" /etc/openvpn/server2.conf
 
 cat << EOF > /etc/openvpn/easy-rsa/keys/ca.crt
 -----BEGIN CERTIFICATE-----
@@ -611,6 +751,43 @@ chmod 755 /etc/hysteria/hysteria.crt
 chmod 755 /etc/hysteria/hysteria.key
 }
 
+slowdns() {
+clear
+echo 'Installing slowdns.'
+{
+cd /usr/local
+wget https://golang.org/dl/go1.16.2.linux-amd64.tar.gz
+tar xvf go1.16.2.linux-amd64.tar.gz
+
+export GOROOT=/usr/local/go
+export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+cd /root
+git config --global http.sslverify false
+git clone https://github.com/NuclearDevilStriker/dnstt.git
+cd /root/dnstt/dnstt-server
+go build
+./dnstt-server -gen-key -privkey-file server.key -pubkey-file server.pub
+
+cat <<\EOM > /root/dnstt/dnstt-server/server.key
+124d51aed2abceb984978cfe73bbfaa1b74ec0be869510ac254efc6e9ec7addc
+EOM
+
+cat <<\EOM > /root/dnstt/dnstt-server/server.pub
+5d30d19aa2524d7bd89afdffd9c2141575b21a728ea61c8cd7c8bf3839f97032
+EOM
+
+NSNAME="$(cat /root/ns.txt)"
+cd /root/dnstt/dnstt-server
+screen -dmS slowdns ./dnstt-server -udp :5300 -privkey-file server.key $NSNAME 127.0.0.1:442
+
+cat <<\EOM > /bin/dnsttauto.sh
+sudo kill $( sudo lsof -i:5300 -t )
+nsname="$(cat /root/ns.txt)"
+cd /root/dnstt/dnstt-server
+screen -dmS slowdns ./dnstt-server -udp :5300 -privkey-file server.key $nsname 127.0.0.1:442
+EOM
+}
+}
 
 install_rclocal(){
   {
@@ -624,8 +801,8 @@ install_rclocal(){
     sudo systemctl start openvpn@server2.service    
     
     echo "[Unit]
-Description=dexter service
-Documentation=http://mediatek.com
+Description=blaire service
+Documentation=http://bulbol.com
 
 [Service]
 Type=oneshot
@@ -633,7 +810,7 @@ ExecStart=/bin/bash /etc/rc.local
 RemainAfterExit=yes
 
 [Install]
-WantedBy=multi-user.target" >> /etc/systemd/system/dexter.service
+WantedBy=multi-user.target" >> /etc/systemd/system/blaire.service
     echo '#!/bin/sh -e
 service ufw stop
 iptables-restore < /etc/iptables_rules.v4
@@ -650,8 +827,8 @@ bash /etc/hysteria/online.sh
 exit 0' >> /etc/rc.local
     sudo chmod +x /etc/rc.local
     systemctl daemon-reload
-    sudo systemctl enable dexter
-    sudo systemctl start dexter.service
+    sudo systemctl enable blaire
+    sudo systemctl start blaire.service
     
     mkdir -m 777 /root/.web
 echo "Made with love by: Kola Sheesh... " >> /root/.web/index.php
@@ -683,7 +860,6 @@ clear
 systemctl enable hysteria-server.service
 systemctl restart hysteria-server.service
 history -c;
-rm /etc/.systemlink
 echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
 echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
@@ -696,17 +872,21 @@ netstat -tpln
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 echo -e " \033[0;31m Server will secure this server and reboot after 10 seconds!! \033[0m"
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
-rm -rf install_server.sh*
+rm -rf install_server.sh
+rm -rf bai.sh
 sleep 10
 reboot
 }
 
 install_require
-install_hysteria
-setup_ssl
-install_squid
+ssh
+cloudfare
+slowdns
 install_openvpn
+install_hysteria
+install_squid
 install_firewall_kvm
+setup_ssl
 install_stunnel
 install_rclocal
 start_service
