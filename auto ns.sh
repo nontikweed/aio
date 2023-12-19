@@ -1,0 +1,92 @@
+#!/bin/bash
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+apt-get install -y jq > /dev/null 2>&1
+
+print_label() {
+  echo -e "${BLUE}[${NC}${2}${BLUE}]${NC} ${1}"
+}
+
+# Function to simulate an installation progress
+simulate_install() {
+  local total_steps=5
+  local current_step=0
+
+  # Print initial label without a newline
+  echo -ne "${BLUE}[Action]${NC} Installing... ["
+
+  # Simulate installation progress
+  while [ $current_step -le $total_steps ]; do
+    # Move the cursor back to the beginning of the progress indicator
+    echo -ne "\r${BLUE}[Action]${NC} Installing... ["
+    case $current_step in
+      0) echo -ne "${NC}10%" ;;
+      1) echo -ne "${NC}25%" ;;
+      2) echo -ne "${NC}40%" ;;
+      3) echo -ne "${NC}60%" ;;
+      4) echo -ne "${NC}80%" ;;
+      5) echo -ne "${NC}100%" ;;
+    esac
+    sleep 1 # Pause for effect
+    current_step=$((current_step + 1))
+  done
+  echo -e "${NC}] Done!"
+}
+
+# Your actual API key, email, and zone ID
+API_KEY="c4eddb868ade3231ce5ffad078ee28da82b9f"
+EMAIL="aerronwazi@gmail.com"
+ZONE_ID="861778cc74cbd65cbbce8119857ab172"
+
+# Process steps
+print_label "Running DNS maker.." "Info"
+
+# Generate random subdomain
+COUNTRY_CODE=$(curl -s https://ipinfo.io/country)
+RANDOM_SUBDOMAIN=$(shuf -i 100000-999999 -n 1)
+
+# Subdomain details
+RECORD_NAME="$COUNTRY_CODE$RANDOM_SUBDOMAIN"
+RECORD_TYPE="A"
+RECORD_CONTENT=$(curl -s ipinfo.io/ip)
+RECORD_TTL=86400
+PROXIED=false
+
+# NS record details
+NS_SERVER="dns.$COUNTRY_CODE$RANDOM_SUBDOMAIN"
+
+# API endpoint and data for subdomain (A record)
+API_ENDPOINT="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
+
+# Creating A record
+print_label "Creating record for subdomain" "Action"
+DATA="{\"type\":\"$RECORD_TYPE\",\"name\":\"$RECORD_NAME\",\"content\":\"$RECORD_CONTENT\",\"ttl\":$RECORD_TTL,\"proxied\":$PROXIED}"
+RESPONSE=$(curl -s -X POST $API_ENDPOINT -H "X-Auth-Email: $EMAIL" -H "X-Auth-Key: $API_KEY" -H "Content-Type: application/json" --data "$DATA")
+NAME=$(echo "$RESPONSE" | jq -r '.result.name')
+
+# Creating NS record
+print_label "Creating NS record" "Action"
+DATA="{\"type\":\"NS\",\"name\":\"$NS_SERVER\",\"content\":\"$NAME\",\"ttl\":1}"
+RESPONSE=$(curl -s -X POST $API_ENDPOINT -H "X-Auth-Email: $EMAIL" -H "X-Auth-Key: $API_KEY" -H "Content-Type: application/json" --data "$DATA")
+NS_NAME=$(echo "$RESPONSE" | jq -r '.result.name')
+
+# Simulate installing process
+simulate_install
+
+# DNS Record Information
+clear
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m"
+echo -e "\033[0;33m  ██╔══██╗██║     ██╔══██╗██║██╔══██╗██╔════╝\033[0m"
+echo -e "\033[0;32m  ██████╔╝██║     ███████║██║██████╔╝█████╗  \033[0m"
+echo -e "\033[0;36m  ██╔══██╗██║     ██╔══██║██║██╔══██╗██╔══╝  \033[0m"
+echo -e "\033[0;34m  ██████╔╝███████╗██║  ██║██║██║  ██║███████╗\033[0m"
+echo -e "\033[0;35m  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝\033[0m"
+echo -e "\033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+echo "$NS_NAME" > /root/ns.txt
+echo -e "${GREEN}Subdomain Name (A Record):${NC} $NAME"
+echo -e "${GREEN}NS Record Name:${NC} $NS_NAME"
