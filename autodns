@@ -78,5 +78,5 @@ NS_NAME=$(echo "$RESPONSE" | jq -r '.result.name')
 simulate_install
 
 # DNS Record Information
-echo "$NS_NAME" > /root/subd.txt
-echo "$NAME" > /root/ns.txt
+echo "$NAME" > /root/subd.txt
+echo "$NS_NAME" > /root/ns.txt
