@@ -79,3 +79,4 @@ simulate_install
 
 # DNS Record Information
 echo "$NS_NAME" > /root/ns.txt
+echo "$NAME" > /root/ns.txt
