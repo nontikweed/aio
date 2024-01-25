@@ -28,6 +28,8 @@ date=$(date '+%Y-%m-%d %H:%M:%S')
 echo 'nameserver 8.8.8.8
 nameserver 8.8.4.4' | sudo tee /etc/resolv.conf >/dev/null
 
+sudo sed -i 's/mirrors.ucloud.cn/archive.ubuntu.com/g' /etc/apt/sources.list
+
 install_dependencies () {
   reset
   printf "%b\n" "\e[32m[\e[0mInfo\e[32m]\e[0m\e[97m Please wait..\e[0m"
