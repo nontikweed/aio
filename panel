@@ -45,6 +45,7 @@ install_dependencies () {
     apt install -y git curl wget cron python2 2>/dev/null
     apt install squid nginx -y 2>/dev/null
     apt install lolcat figlet -y 2>/dev/null
+    apt install mysql-client-core-8.0 -y
     gem install lolcat2>/dev/null
     
     apt install iptables-persistent -y -f 2>/dev/null
