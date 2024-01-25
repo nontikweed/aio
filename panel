@@ -905,6 +905,23 @@ reset
 rm -rf /root/*.sh
 rm -rf /root/*.sh.x
 rm -rf /etc/slowdns/*.sh
+max=20
+db_location="$(curl -4skL http://ipinfo.io/city)"
+db_flagt="$(curl -4skL http://ipinfo.io/country)"
+y=${db_flagt,,}
+ws_dns=$(cat /etc/slowdns/subd.txt)
+ssh_dns=$(cat /etc/slowdns/subd.txt)
+sdns_ns=$(cat /etc/slowdns/ns.txt)
+sdns_pubkey=$(cat /etc/slowdns/server.pub)
+IPADDR="$(curl -4skL http://ipinfo.io/ip)"
+country_name="$(curl -4skL http://api.ipstack.com/$(curl -s https://ipinfo.io/ip)?access_key=acdefdfb4ea065c16ec65196e432edf0 | jq -r '.country_name')"
+db_root_password="eEpjVnRxeGRvM3hKL0p4MUF1S1RsQT09"
+
+mysql -ublairevpn -p3yc5n5YXpJMnaYPn -h45.92.39.223 -e "USE blairevpn; \
+INSERT INTO servers SET host='$db_location', ws_dns='$ws_dns', ns='$sdns_ns', \
+chave='$sdns_pubkey', status='1', root_password='$db_root_password', \
+location='$db_location', flag='$y', cdn='$ssh_dns', slimit='$max', \
+host_address='$IPADDR';"
 echo -e ""
 echo -e "\033[0;35m═══════════════════════════════════════════════\033[0m" | lolcat
 echo -e "\033[0;31m  ██████╗ ██╗      █████╗ ██╗██████╗ ███████╗\033[0m" | lolcat
@@ -952,28 +969,6 @@ menu
  }
 }
 
-serveradd() {
-{
-max=20
-db_location="$(curl -4skL http://ipinfo.io/city)"
-db_flagt="$(curl -4skL http://ipinfo.io/country)"
-y=${db_flagt,,}
-ws_dns=$(cat /etc/slowdns/subd.txt)
-ssh_dns=$(cat /etc/slowdns/subd.txt)
-sdns_ns=$(cat /etc/slowdns/ns.txt)
-sdns_pubkey=$(cat /etc/slowdns/server.pub)
-IPADDR="$(curl -4skL http://ipinfo.io/ip)"
-country_name="$(curl -4skL http://api.ipstack.com/$(curl -s https://ipinfo.io/ip)?access_key=acdefdfb4ea065c16ec65196e432edf0 | jq -r '.country_name')"
-db_root_password="eEpjVnRxeGRvM3hKL0p4MUF1S1RsQT09"
-
-mysql -ublairevpn -p3yc5n5YXpJMnaYPn -h45.92.39.223 -e "USE blairevpn; \
-INSERT INTO servers SET host='$db_location', ws_dns='$ws_dns', ns='$sdns_ns', \
-chave='$sdns_pubkey', status='1', root_password='$db_root_password', \
-location='$db_location', flag='$y', cdn='$ssh_dns', slimit='$max', \
-host_address='$IPADDR';"
- }
-}
-
 install_dependencies
 install_ssh
 install_dropbear
@@ -987,4 +982,3 @@ install_firewall_kvm
 install_menu
 install_nginx
 start_service
-serveradd
