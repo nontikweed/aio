@@ -23,12 +23,12 @@ server_ip=$(curl -s https://api.ipify.org)
 server_interface=$(ip route get 8.8.8.8 | awk '/dev/ {f=NR} f&&NR-1==f' RS=" ")
 date=$(date '+%Y-%m-%d %H:%M:%S')
 
+# Auto change repo
+sudo sed -i 's/mirrors.ucloud.cn/archive.ubuntu.com/g' /etc/apt/sources.list
 
 # Fixed Downloading Github
 echo 'nameserver 8.8.8.8
 nameserver 8.8.4.4' | sudo tee /etc/resolv.conf >/dev/null
-
-sudo sed -i 's/mirrors.ucloud.cn/archive.ubuntu.com/g' /etc/apt/sources.list
 
 install_dependencies () {
   reset
@@ -43,9 +43,9 @@ install_dependencies () {
     apt install -y nano unzip jq virt-what net-tools 2>/dev/null
     apt install -y mlocate dh-make libaudit-dev build-essential fail2ban 2>/dev/null
     apt install -y git curl wget cron python2 2>/dev/null
+    apt install mariadb-client -y
     apt install squid nginx -y 2>/dev/null
     apt install lolcat figlet -y 2>/dev/null
-    apt install mysql-client-core-8.0 -y
     gem install lolcat2>/dev/null
     
     apt install iptables-persistent -y -f 2>/dev/null
@@ -894,6 +894,9 @@ cd
   }
 echo -e "[\e[33mNotice\e[0m] Restarting Nginx Service.."
 systemctl restart nginx
+echo "*/2 * * * * root /usr/local/sbin/set_multilogin_autokill_lib" > /etc/cron.d/set_multilogin_autokill_lib
+service cron restart > /dev/null 2>&1
+service crond restart > /dev/null 2>&1
 }
 
 start_service () {
@@ -950,7 +953,6 @@ menu
 }
 
 serveradd() {
-reset
 {
 max=20
 db_location="$(curl -4skL http://ipinfo.io/city)"
