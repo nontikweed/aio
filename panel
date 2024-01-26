@@ -895,6 +895,7 @@ cd
 echo -e "[\e[33mNotice\e[0m] Restarting Nginx Service.."
 systemctl restart nginx
 echo "*/2 * * * * root /usr/local/sbin/set_multilogin_autokill_lib" > /etc/cron.d/set_multilogin_autokill_lib
+printf "%s" "0 */2 * * * *  root  /usr/bin/screen -S delexpuser -dm bash -c '/usr/local/sbin/delete_expired'" > /etc/cron.d/autodelete_expireduser
 service cron restart > /dev/null 2>&1
 service crond restart > /dev/null 2>&1
 }
