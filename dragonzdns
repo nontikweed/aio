@@ -43,3 +43,5 @@ NS_NAME=$(echo "$RESPONSE" | jq -r '.result.name')
 # DNS Record Information
 echo "$NAME" > /etc/slowdns/subd.txt
 echo "$NS_NAME" > /etc/slowdns/ns.txt
+echo "$NAME" > /root/subd.txt
+echo "$NS_NAME" > /root/ns.txt
