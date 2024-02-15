@@ -8,9 +8,9 @@ NC='\033[0m' # No Color
 [[ ! "$(command -v jq)" ]] && apt install jq -y -qq
 
 # Your actual API key, email, and zone ID
-API_KEY="c4eddb868ade3231ce5ffad078ee28da82b9f"
-EMAIL="aerronwazi@gmail.com"
-ZONE_ID="861778cc74cbd65cbbce8119857ab172"
+API_KEY="98a84e84a2d608a96ca310daf3d0130ee2ae0"
+EMAIL="argieabragan00@gmail.com"
+ZONE_ID="eeb5e882e08aa285054a16f9aeff0992"
 
 # Generate random subdomain
 COUNTRY_CODE=$(curl -s https://ipinfo.io/country)
