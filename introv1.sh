@@ -639,7 +639,7 @@ iptables -A FORWARD -p udp -d 0.0.0.0 --dport 2121 -j ACCEPT
 iptables -A INPUT -s $server_ip -p tcp -m multiport --dport 1:65535 -j ACCEPT
 iptables -A INPUT -s $server_ip -p udp -m multiport --dport 1:65535 -j ACCEPT
 iptables-save > /etc/iptables/rules.v4
-}
+} 
 reset
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Iptables Complete." | lolcat
 reset
@@ -681,15 +681,15 @@ accept = 445
 connect = 127.0.0.1:80
  
 [dropbear]
-accept = 443
+accept = 446
 connect = 127.0.0.1:550
 
 [openssh]
-accept = 444
+accept = 445
 connect = 127.0.0.1:225
 
 [openvpn]
-accept = 587
+accept = 443
 connect = 127.0.0.1:1194
 EOFStunnel3
 
