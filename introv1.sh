@@ -547,9 +547,9 @@ reset
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Hysteria." | lolcat
 {
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Downloading Hysteria." | lolcat
-wget -N --no-check-certificate --header="Authorization: Bearer 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" -q -O ~/install_server.sh https://raw.githubusercontent.com/nontikweed/blaire69/master/install_server.sh > /dev/null 2>&1
-chmod +x ~/install_server.sh > /dev/null 2>&1
-~/install_server.sh --version v1.3.5 > /dev/null 2>&1
+wget -N --no-check-certificate --header="Authorization: Bearer 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" -q -O ~/install_server.sh https://raw.githubusercontent.com/nontikweed/blaire69/master/install_server.sh
+chmod +x ~/install_server.sh 
+~/install_server.sh --version v1.3.5 
 
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Configuring Hysteria." | lolcat
 openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=PH/ST=Bulacan/L=Central Luzon/O=Nethub VPN/OU=IT Department/CN=Nontikweed" -keyout "/etc/hysteria/hysteria.key" -out "/etc/hysteria/hysteria.crt" >/dev/null 2>&1
@@ -557,7 +557,6 @@ openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=PH/ST=Bulacan
 rm -f /etc/hysteria/config.json
 
 rm -f /etc/systemd/system/hysteria-server.service
-
 
 echo '{
   "listen": ":5666",
