@@ -677,7 +677,7 @@ socket = r:TCP_NODELAY=1
 TIMEOUTclose = 0
  
 [websocket]
-accept = 445
+accept = 449
 connect = 127.0.0.1:80
  
 [dropbear]
