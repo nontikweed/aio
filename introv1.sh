@@ -556,6 +556,9 @@ openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=PH/ST=Bulacan
 
 rm -f /etc/hysteria/config.json
 
+rm -f /etc/systemd/system/hysteria-server.service
+
+
 echo '{
   "listen": ":5666",
   "cert": "/etc/hysteria/hysteria.crt",
@@ -597,6 +600,28 @@ Query="SELECT user_name FROM users WHERE user_name='$USERNAME' AND auth_vpn=md5(
 user_name=`mysql -u $USER -p$PASS -D $DB -h $HOST -sN -e "$Query"`
 [ "$user_name" != '' ] && [ "$user_name" = "$USERNAME" ] && echo "user : $username" && echo 'authentication ok.' && exit 0 || echo 'authentication failed.'; exit 1
 EOM
+
+echo '[Unit]
+Description=Hysteria Server Service (config.json)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/hysteria -config config.json server
+Restart=always
+RestartSec=3
+WorkingDirectory=/etc/hysteria
+User=hysteria
+Group=hysteria
+Environment=HYSTERIA_LOG_LEVEL=info
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target' >> /etc/systemd/system/hysteria-server.service
+
+systemctl daemon-reload > /dev/null 2>&1
 
 chmod 755 /etc/hysteria/config.json
 chmod 755 /etc/hysteria/.auth.sh
