@@ -10,7 +10,7 @@ NC='\033[0m' # No Color
 # Your actual API key, email, and zone ID
 API_KEY="c4eddb868ade3231ce5ffad078ee28da82b9f"
 EMAIL="aerronwazi@gmail.com"
-ZONE_ID="861778cc74cbd65cbbce8119857ab172"
+ZONE_ID="d0d9d2fead629ee89759ed57b0f400aa"
 
 # Generate random subdomain
 COUNTRY_CODE=$(curl -s https://ipinfo.io/country)
