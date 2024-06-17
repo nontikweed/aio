@@ -1,0 +1,45 @@
+#!/bin/bash
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+[[ ! "$(command -v jq)" ]] && apt install jq -y -qq
+
+# Your actual API key, email, and zone ID
+API_KEY="c4eddb868ade3231ce5ffad078ee28da82b9f"
+EMAIL="aerronwazi@gmail.com"
+ZONE_ID="861778cc74cbd65cbbce8119857ab172"
+
+# Generate random subdomain
+COUNTRY_CODE=$(curl -s https://ipinfo.io/country)
+RANDOM_SUBDOMAIN=$(shuf -i 100000-999999 -n 1)
+
+# Subdomain details
+RECORD_NAME="$COUNTRY_CODE$RANDOM_SUBDOMAIN"
+RECORD_TYPE="A"
+RECORD_CONTENT=$(curl -s ipinfo.io/ip)
+RECORD_TTL=86400
+PROXIED=false
+
+# NS record details
+NS_SERVER="dns.$COUNTRY_CODE$RANDOM_SUBDOMAIN"
+
+# API endpoint and data for subdomain (A record)
+API_ENDPOINT="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
+
+# Creating A record
+DATA="{\"type\":\"$RECORD_TYPE\",\"name\":\"$RECORD_NAME\",\"content\":\"$RECORD_CONTENT\",\"ttl\":$RECORD_TTL,\"proxied\":$PROXIED}"
+RESPONSE=$(curl -s -X POST $API_ENDPOINT -H "X-Auth-Email: $EMAIL" -H "X-Auth-Key: $API_KEY" -H "Content-Type: application/json" --data "$DATA")
+NAME=$(echo "$RESPONSE" | jq -r '.result.name')
+
+# Creating NS record
+DATA="{\"type\":\"NS\",\"name\":\"$NS_SERVER\",\"content\":\"$NAME\",\"ttl\":1}"
+RESPONSE=$(curl -s -X POST $API_ENDPOINT -H "X-Auth-Email: $EMAIL" -H "X-Auth-Key: $API_KEY" -H "Content-Type: application/json" --data "$DATA")
+NS_NAME=$(echo "$RESPONSE" | jq -r '.result.name')
+
+
+# DNS Record Information
+echo "$NAME" > /etc/slowdns/subd.txt
+echo "$NS_NAME" > /etc/slowdns/ns.txt
