@@ -574,7 +574,7 @@ socket = r:TCP_NODELAY=1
 TIMEOUTclose = 0
  
 [websocket]
-accept = 449
+accept = 443
 connect = 127.0.0.1:80
  
 [dropbear]
@@ -586,7 +586,7 @@ accept = 445
 connect = 127.0.0.1:225
 
 [openvpn]
-accept = 443
+accept = 587
 connect = 127.0.0.1:1194
 EOFStunnel3
 
