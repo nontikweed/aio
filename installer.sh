@@ -13,7 +13,7 @@ BOT_TOKEN="6450580711:AAFwto6NF-AtHkWiGBi3Z66CnNwMB7TpCcw"
 CHAT_ID="2122626569"
  
 #PORT OPENVPN
-PORT_TCP='110';
+PORT_TCP='1194';
 PORT_UDP='25222';
 
 #PORT NGINX
@@ -574,20 +574,20 @@ socket = r:TCP_NODELAY=1
 TIMEOUTclose = 0
  
 [websocket]
-accept = 445
+accept = 449
 connect = 127.0.0.1:80
  
 [dropbear]
-accept = 443
+accept = 446
 connect = 127.0.0.1:550
 
 [openssh]
-accept = 444
+accept = 445
 connect = 127.0.0.1:225
 
 [openvpn]
-accept = 587
-connect = 127.0.0.1:110
+accept = 443
+connect = 127.0.0.1:1194
 EOFStunnel3
 
 echo -n -e "[\e[33mNotice\e[0m]" && echo -e " Restarting Stunnel." | lolcat
@@ -881,7 +881,7 @@ client
 dev tun
 persist-tun
 proto tcp
-remote IP-ADDRESS 110
+remote IP-ADDRESS 1194
 persist-remote-ip
 resolv-retry infinite
 connect-retry 0 1
@@ -941,7 +941,7 @@ client
 dev tun
 persist-tun
 proto tcp
-remote IP-ADDRESS 110
+remote IP-ADDRESS 1194
 persist-remote-ip
 resolv-retry infinite
 connect-retry 0 1
@@ -985,7 +985,7 @@ client
 dev tun
 persist-tun
 proto tcp
-remote IP-ADDRESS 110
+remote IP-ADDRESS 1194
 persist-remote-ip
 resolv-retry infinite
 connect-retry 0 1
@@ -1023,7 +1023,7 @@ client
 dev tun
 persist-tun
 proto tcp
-remote IP-ADDRESS 110
+remote IP-ADDRESS 1194
 http-proxy IP-ADDRESS 8000
 persist-remote-ip
 resolv-retry infinite
