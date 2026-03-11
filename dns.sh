@@ -1,4 +1,5 @@
 #!/bin/bash
+clear
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -16,8 +17,14 @@ MODE="single"
 DNS_CREATED=()
 XRP_CREATED=()
 
-command -v jq >/dev/null || { echo "Install jq"; exit; }
-command -v curl >/dev/null || { echo "Install curl"; exit; }
+command -v jq >/dev/null || { echo "Installing jq..."; apt update -y && apt install jq -y; }
+command -v curl >/dev/null || { echo "Installing curl..."; apt update -y && apt install curl -y; }
+command -v lolcat >/dev/null || {
+echo "Installing lolcat..."
+apt update -y
+apt install ruby -y
+gem install lolcat
+}
 
 # --------------------------------
 # Check API Status
@@ -46,12 +53,24 @@ fi
 # --------------------------------
 # Select Account
 # --------------------------------
-
 select_account(){
+clear
+echo ""
+
+echo "
+██╗  ██╗███████╗██████╗ ███████╗ ██████╗
+╚██╗██╔╝██╔════╝██╔══██╗██╔════╝██╔════╝
+ ╚███╔╝ █████╗  ██████╔╝█████╗  ██║
+ ██╔██╗ ██╔══╝  ██╔══██╗██╔══╝  ██║
+██╔╝ ██╗███████╗██████╔╝███████╗╚██████╗
+╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝ ╚═════╝
+" | lolcat -a -d 5
 
 echo ""
-echo -e "${CYAN}Cloudflare Accounts${NC}"
-echo "------------------------------------------------"
+echo "=============================================="
+echo "        CLOUDFLARE ACCOUNT SELECTOR"
+echo "=============================================="
+echo ""
 
 for i in "${!ACCOUNTS[@]}"
 do
@@ -60,12 +79,14 @@ NUM=$((i+1))
 EMAIL_ACC=$(echo "${ACCOUNTS[$i]}" | cut -d'|' -f1)
 KEY_ACC=$(echo "${ACCOUNTS[$i]}" | cut -d'|' -f2)
 
-printf "%s) %s   " "$NUM" "$EMAIL_ACC"
+printf " %s) %-30s " "$NUM" "$EMAIL_ACC"
 check_api_status "$EMAIL_ACC" "$KEY_ACC"
 
 done
 
-echo "------------------------------------------------"
+echo ""
+echo "=============================================="
+echo ""
 
 read -p "Select account: " CHOICE
 
@@ -74,11 +95,12 @@ INDEX=$((CHOICE-1))
 EMAIL=$(echo "${ACCOUNTS[$INDEX]}" | cut -d'|' -f1)
 API_KEY=$(echo "${ACCOUNTS[$INDEX]}" | cut -d'|' -f2)
 
-echo -e "${YELLOW}Using account:${NC} $EMAIL"
+echo ""
+echo -e "${GREEN}✔ Using account:${NC} $EMAIL"
+echo "=============================================="
 echo ""
 
 }
-
 # --------------------------------
 # Fetch Domains
 # --------------------------------
@@ -107,19 +129,30 @@ fi
 # --------------------------------
 
 select_domains(){
-
+clear
 echo ""
-echo "Domain Mode"
-echo "------------------------------------------------"
+echo "
+██╗  ██╗███████╗██████╗ ███████╗ ██████╗
+╚██╗██╔╝██╔════╝██╔══██╗██╔════╝██╔════╝
+ ╚███╔╝ █████╗  ██████╔╝█████╗  ██║
+ ██╔██╗ ██╔══╝  ██╔══██╗██╔══╝  ██║
+██╔╝ ██╗███████╗██████╔╝███████╗╚██████╗
+╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝ ╚═════╝
+" | lolcat -a -d 5
+echo ""
+echo "=============================================="
+echo "              DOMAIN MODE" | lolcat
+echo "=============================================="
+echo ""
 echo "1) Single Domain"
 echo "2) Multi Domain"
-echo "------------------------------------------------"
 
+echo "=============================================="
 read -p "Choose mode: " MODE_CHOICE
 
 echo ""
-echo -e "${CYAN}Available Domains${NC}"
-echo "------------------------------------------------"
+echo "Available Domains" | lolcat
+echo "=============================================="
 
 for ((i=0;i<TOTAL;i++))
 do
@@ -134,17 +167,18 @@ COUNT_DNS=$(curl -s "https://api.cloudflare.com/client/v4/zones/$ZONE/dns_record
 
 NUM=$((i+1))
 
-printf "%s) %-25s DNS: %s/1000\n" "$NUM" "${DOMAINS[$i]}" "$COUNT_DNS"
+printf "%2s) %-30s DNS: %4s/1000\n" "$NUM" "${DOMAINS[$i]}" "$COUNT_DNS"
 
 done
 
-echo "------------------------------------------------"
+echo "==============================================" | lolcat
 
 if [ "$MODE_CHOICE" = "1" ]; then
 
 MODE="single"
 
-read -p "Select domain: " CHOICE
+echo ""
+read -p "Select domain number: " CHOICE
 INDEX=$((CHOICE-1))
 
 SELECTED_DOMAINS=("${DOMAINS[$INDEX]}")
@@ -154,6 +188,7 @@ else
 
 MODE="multi"
 
+echo ""
 read -p "Select domains (example: 1 3 5): " CHOICES
 
 SELECTED_DOMAINS=()
@@ -169,10 +204,77 @@ done
 fi
 
 echo ""
-echo "Selected Domains:"
+echo "==============================================" | lolcat
+echo "Selected Domains" | lolcat
+echo "==============================================" | lolcat
+
 for D in "${SELECTED_DOMAINS[@]}"
 do
-echo "- $D"
+echo "✔ $D" | lolcat
+done
+
+echo ""
+}
+
+# --------------------------------
+# Delete All DNS/XRP Records
+# --------------------------------
+
+delete_all_records(){
+clear
+echo ""
+echo -e "${RED}WARNING: This will delete ALL dns/xrp records${NC}"
+read -p "Type YES to confirm: " CONFIRM
+
+[ "$CONFIRM" != "YES" ] && { echo "Cancelled."; return; }
+
+for i in "${!SELECTED_DOMAINS[@]}"
+do
+
+DOMAIN=${SELECTED_DOMAINS[$i]}
+ZONE_ID=${SELECTED_ZONES[$i]}
+
+API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
+
+echo ""
+echo "Scanning records for $DOMAIN..."
+
+DATA=$(curl -s "$API?per_page=1000" \
+-H "X-Auth-Email: $EMAIL" \
+-H "X-Auth-Key: $API_KEY" \
+-H "Content-Type: application/json")
+
+IDS=$(echo "$DATA" | jq -r '.result[] | select(.name | test("^(dns|xrp)[0-9]+")) | .id')
+
+TOTAL=$(echo "$IDS" | wc -l)
+
+COUNT=1
+
+for ID in $IDS
+do
+
+echo -ne "Deleting record [$COUNT/$TOTAL] ... "
+
+RESULT=$(curl -s -X DELETE "$API/$ID" \
+-H "X-Auth-Email: $EMAIL" \
+-H "X-Auth-Key: $API_KEY" \
+-H "Content-Type: application/json")
+
+OK=$(echo "$RESULT" | jq -r '.success')
+
+if [ "$OK" = "true" ]; then
+echo -e "${GREEN}✔ Deleted${NC}"
+else
+echo -e "${RED}✖ Failed${NC}"
+fi
+
+COUNT=$((COUNT+1))
+
+done
+
+echo ""
+echo -e "${YELLOW}Finished cleaning records for $DOMAIN${NC}"
+
 done
 
 }
@@ -257,6 +359,7 @@ API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
 
 while true
 do
+clear
 
 DNS_SUB="dns$COUNT"
 XRP_SUB="xrp$COUNT"
@@ -303,24 +406,112 @@ done
 
 }
 
-# --------------------------------
-# bulk_ip_input
-# --------------------------------
 bulk_ip_input(){
+clear
+echo ""
+echo "Bulk IP Generator" | lolcat
+echo "------------------------------------------------"
+echo "Select Base Record Type"
+echo "------------------------------------------------"
+echo "1) DNS Records  (dns1.domain.com)"
+echo "2) XRP Records  (xrp1.domain.com)"
+echo "------------------------------------------------"
 
-echo "Paste IP list (one per line)"
-echo "Press CTRL+D when finished"
+read -p "Choose option: " BASE_OPT
 
-while read IP
+case $BASE_OPT in
+1) BASE="dns" ;;
+2) BASE="xrp" ;;
+*) echo "Invalid option"; return ;;
+esac
+
+IPS=()
+
+echo ""
+echo "Paste IP list (press ENTER on empty line to start)"
+echo ""
+
+# collect pasted IPs
+while true
+do
+read IP
+[ -z "$IP" ] && break
+IP=$(echo "$IP" | xargs)
+IPS+=("$IP")
+done
+
+TOTAL=${#IPS[@]}
+COUNT=$(get_next_num)
+SUCCESS=0
+FAILED=0
+INDEX=1
+
+for IP in "${IPS[@]}"
 do
 
-IP=$(echo "$IP" | xargs)
+if ! valid_ip "$IP"; then
+echo "[${INDEX}/${TOTAL}] ✖ Invalid IP: $IP"
+FAILED=$((FAILED+1))
+INDEX=$((INDEX+1))
+continue
+fi
 
-valid_ip "$IP" || { echo "Invalid IP $IP"; continue; }
+for i in "${!SELECTED_DOMAINS[@]}"
+do
 
-create_dns "$IP"
+DOMAIN=${SELECTED_DOMAINS[$i]}
+ZONE_ID=${SELECTED_ZONES[$i]}
+API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
+
+while true
+do
+
+SUB="${BASE}${COUNT}"
+
+echo -ne "[${INDEX}/${TOTAL}] Creating ${SUB}.${DOMAIN} -> $IP ... "
+
+RESULT=$(curl -s -X POST "$API" \
+-H "X-Auth-Email: $EMAIL" \
+-H "X-Auth-Key: $API_KEY" \
+-H "Content-Type: application/json" \
+--data "{\"type\":\"A\",\"name\":\"$SUB\",\"content\":\"$IP\",\"ttl\":1,\"proxied\":false}")
+
+OK=$(echo "$RESULT" | jq -r '.success')
+
+if [ "$OK" = "true" ]; then
+echo "✔ Success"
+SUCCESS=$((SUCCESS+1))
+COUNT=$((COUNT+1))
+break
+else
+
+ERROR=$(echo "$RESULT" | jq -r '.errors[0].message')
+
+if [[ "$ERROR" == *"identical record already exists"* ]]; then
+COUNT=$((COUNT+1))
+continue
+else
+echo "✖ Failed ($ERROR)"
+FAILED=$((FAILED+1))
+break
+fi
+
+fi
 
 done
+
+done
+
+INDEX=$((INDEX+1))
+
+done
+
+echo ""
+echo "--------------------------------"
+echo "✔ Created : $SUCCESS"
+echo "✖ Failed  : $FAILED"
+echo "Bulk creation finished." | lolcat
+echo "--------------------------------"
 
 }
 
@@ -328,9 +519,9 @@ done
 # Slash IP Bulk
 # --------------------------------
 bulk_slash_ips(){
-
+clear
 echo ""
-echo -e "${CYAN}Slash IP Bulk Generator${NC}"
+echo "Slash IP Bulk Generator" | lolcat
 echo "------------------------------------------------"
 echo "Select Base Record Type"
 echo "------------------------------------------------"
@@ -441,7 +632,7 @@ echo "--------------------------------"
 # --------------------------------
 
 view_records(){
-
+clear
 echo ""
 echo "DNS / XRP Records"
 echo "--------------------------------"
@@ -502,25 +693,46 @@ COUNT=$(get_next_num)
 
 while true
 do
+clear
+
+echo "
+██╗  ██╗███████╗██████╗ ███████╗ ██████╗
+╚██╗██╔╝██╔════╝██╔══██╗██╔════╝██╔════╝
+ ╚███╔╝ █████╗  ██████╔╝█████╗  ██║
+ ██╔██╗ ██╔══╝  ██╔══██╗██╔══╝  ██║
+██╔╝ ██╗███████╗██████╔╝███████╗╚██████╗
+╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝ ╚═════╝
+" | lolcat -a -d 2
+
+echo "Cloudflare DNS Automation Tool" | lolcat
 
 echo ""
-echo -e "${CYAN}"
-echo "██╗  ██╗███████╗██████╗ ███████╗ ██████╗"
-echo "╚██╗██╔╝██╔════╝██╔══██╗██╔════╝██╔════╝"
-echo " ╚███╔╝ █████╗  ██████╔╝█████╗  ██║"
-echo " ██╔██╗ ██╔══╝  ██╔══██╗██╔══╝  ██║"
-echo "██╔╝ ██╗███████╗██████╔╝███████╗╚██████╗"
-echo "╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝ ╚═════╝"
-echo -e "${NC}"
 
-echo -e "${YELLOW}Cloudflare DNS Automation Tool${NC}"
+for i in "${!SELECTED_DOMAINS[@]}"
+do
+
+DOMAIN=${SELECTED_DOMAINS[$i]}
+ZONE_ID=${SELECTED_ZONES[$i]}
+
+COUNT_DNS=$(curl -s "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?per_page=1" \
+-H "X-Auth-Email: $EMAIL" \
+-H "X-Auth-Key: $API_KEY" \
+-H "Content-Type: application/json" \
+| jq -r '.result_info.total_count')
+
+echo "Domain: $DOMAIN  |  DNS Usage: $COUNT_DNS / 1000" | lolcat
+
+done
 
 echo ""
+echo "----------------------------------------------" | lolcat
+
 echo "1) Manual Add IP"
 echo "2) Import from ip.txt"
 echo "3) View DNS/XRP records"
 echo "4) Bulk paste IP"
 echo "5) Slash IP bulk generator"
+echo "6) Delete ALL DNS/XRP records"
 echo "0) Exit"
 echo ""
 
@@ -554,8 +766,12 @@ bulk_ip_input
 bulk_slash_ips
 ;;
 
+6)
+delete_all_records
+;;
+
 0)
-echo "Exiting..."
+echo "Exiting..." | lolcat
 exit
 ;;
 
