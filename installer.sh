@@ -238,7 +238,7 @@ echo -e "[\e[33mNotice\e[0m] Restarting Squid Service.."
 systemctl restart squid
         
 cd /etc || exit
-wget -q -O /usr/sbin/sshws  "https://raw.githubusercontent.com/nontikweed/aio/refs/heads/main/socks.py" 2>/dev/null
+wget -q -O /usr/sbin/sshws  "https://raw.githubusercontent.com/nontikweed/aio/main/socks.py" 2>/dev/null
 
 wget -q -O /usr/sbin/openvpnws "https://raw.githubusercontent.com/nontikweed/aio/main/openvpnws" 2>/dev/null
 
