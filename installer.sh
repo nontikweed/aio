@@ -624,27 +624,46 @@ EOF
 
 sysctl -p
 
+# RESET IPTABLES
 iptables -t nat -F
-iptables -F FORWARD
+iptables -F
+iptables -X
 
-# UDPGW
+# DEFAULT POLICIES
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+
+# UDPGW → HYSTERIA
 iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 20000:50000 -j DNAT --to-destination :5666
 iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
 
-# OpenVPN NAT
+# OPENVPN NAT
 iptables -t nat -A POSTROUTING -s 172.29.0.0/16 -o "$server_interface" -j MASQUERADE
 iptables -t nat -A POSTROUTING -s 172.29.16.0/16 -o "$server_interface" -j MASQUERADE
 
-# DNS Redirect
+# EXTRA MASQUERADE FIX
+iptables -t nat -A POSTROUTING -o "$server_interface" -j MASQUERADE
+
+# OPENVPN FORWARD
+iptables -A FORWARD -s 172.29.0.0/16 -j ACCEPT
+iptables -A FORWARD -d 172.29.0.0/16 -j ACCEPT
+
+iptables -A FORWARD -s 172.29.16.0/16 -j ACCEPT
+iptables -A FORWARD -d 172.29.16.0/16 -j ACCEPT
+
+iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# DNS REDIRECT
 iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
 iptables -A INPUT -p udp --dport 5300 -j ACCEPT
 
-# BadVPN
+# BADVPN
 iptables -t nat -A PREROUTING -d "$server_ip" -p udp --dport 5300 -j REDIRECT --to-ports 2121
 iptables -A FORWARD -p udp --dport 2121 -j ACCEPT
 
+# SAVE RULES
 iptables-save > /etc/iptables/rules.v4
-
 reset
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Iptables Complete." | lolcat
 reset
