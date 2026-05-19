@@ -842,7 +842,7 @@ echo '{
   "up_mbps": 100,
   "down_mbps": 100,
   "disable_udp": false,
-  "obfs": "nontikweed",
+  "obfs": "${HY2_OBFS:-nontikweed}",
   "auth": {
     "mode": "passwords",
     "config": ["blaire"]
