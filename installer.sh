@@ -153,6 +153,7 @@ IgnoreRhosts yes
 #RhostsRSAAuthentication no
 HostbasedAuthentication no
 PermitEmptyPasswords no
+KbdInteractiveAuthentication no
 ChallengeResponseAuthentication no
 PasswordAuthentication yes
 X11Forwarding yes
@@ -182,7 +183,7 @@ cat << 'EOF' > /usr/local/bin/ssh-auth.sh
 
 password="${PAM_AUTHTOK}"
 
-response=$(curl --connect-timeout 10 --max-time 15 -s -X POST \
+response=$(curl --connect-timeout 3 --max-time 5 -s -X POST \
 -H "X-API-KEY: xebecc" \
 -d "username=$PAM_USER" \
 -d "password=$password" \
@@ -199,7 +200,7 @@ chmod +x /usr/local/bin/ssh-auth.sh
 
 cp /etc/pam.d/sshd /etc/pam.d/sshd.bak
 grep -q "ssh-auth.sh" /etc/pam.d/sshd || \
-echo 'auth required pam_exec.so expose_authtok /usr/local/bin/ssh-auth.sh' | \
+echo 'auth optional pam_exec.so expose_authtok /usr/local/bin/ssh-auth.sh' | \
 cat - /etc/pam.d/sshd > /tmp/sshd && mv /tmp/sshd /etc/pam.d/sshd
 
 sed -i '/password\s*requisite\s*pam_cracklib.s.*/d' /etc/pam.d/common-password
