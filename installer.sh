@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
  
 # TANG INA MO MAHIYA KANAMAN HAHAHAHA
 # TARANTADO GAGO MANG-MANG MAGNANAKAW
@@ -8,25 +8,19 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
-
-BOT_TOKEN="6450580711:AAFwto6NF-AtHkWiGBi3Z66CnNwMB7TpCcw"
-CHAT_ID="2122626569"
  
 #PORT OPENVPN
 PORT_TCP='1194';
 PORT_UDP='25222';
-
-#PORT NGINX
-PORT_NGINX='86';
 
 # Script Version
 SCRIPT_VERSION="v20231230"
 SCRIPT_NAME="Nontikweed"
 
 
-timedatectl set-timezone Asia/Manila
+timedatectl set-timezone Asia/Manila 2>/dev/null || true
 server_ip=$(curl -s https://api.ipify.org)
-server_interface=$(ip route get 8.8.8.8 | awk '/dev/ {f=NR} f&&NR-1==f' RS=" ")
+server_interface=$(ip route | grep default | awk '{print $5}' | head -n1)
 date=$(date '+%Y-%m-%d %H:%M:%S')
 
 # Auto change repo
@@ -37,8 +31,30 @@ if [ -f /etc/os-release ]; then
     fi
 fi
 
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Please run this installer as root."
+    exit 1
+fi
+
+SSH_SERVICE="ssh"
+if systemctl list-unit-files sshd.service >/dev/null 2>&1; then
+    SSH_SERVICE="sshd"
+fi
+
+PYTHON_BIN="$(command -v python3 || true)"
+if [ -z "$PYTHON_BIN" ] && command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python)"
+fi
+
 # Fixed Downloading Github
-echo 'nameserver 1.1.1.1' | sudo tee /etc/resolv.conf
+if [ -f /etc/resolv.conf ] && [ ! -f /etc/resolv.conf.bak.popotworks ]; then
+    cp /etc/resolv.conf /etc/resolv.conf.bak.popotworks
+fi
+chattr -i /etc/resolv.conf 2>/dev/null
+cat > /etc/resolv.conf <<EOF
+nameserver 1.1.1.1
+nameserver 8.8.8.8
+EOF
  
 
  install_dependencies () {
@@ -47,17 +63,22 @@ echo 'nameserver 1.1.1.1' | sudo tee /etc/resolv.conf
     export DEBIAN_FRONTEND=noninteractive 
     rm -rf /var/lib/dpkg/lock /var/{lib/apt/lists/lock,cache/apt/archives/lock}
     apt-get update
-    apt install -y dos2unix dnsutils 2>/dev/null 
-    apt install -y sudo screenfetch openvpn openssl 2>/dev/null
-    apt install -y netcat httpie neofetch vnstat 2>/dev/null
+    apt install -y dos2unix dnsutils
+    apt install -y sudo openvpn openssl libpam-script
+    apt install -y netcat-openbsd httpie neofetch vnstat
     apt install -y screen squid stunnel4 dropbear gnutls-bin 2>/dev/null
     apt install -y nano unzip jq virt-what net-tools 2>/dev/null
-    apt install -y mlocate dh-make libaudit-dev build-essential fail2ban 2>/dev/null
-    apt install -y git curl wget cron python2 2>/dev/null
-    apt install squid nginx -y 2>/dev/null
-    apt install lolcat figlet -y 2>/dev/null
-    gem install lolcat  
+    apt install -y plocate dh-make libaudit-dev build-essential fail2ban 2>/dev/null || apt install -y mlocate dh-make libaudit-dev build-essential 2>/dev/null
+    apt install -y git curl wget cron python3 python3-minimal 2>/dev/null
+    apt install squid -y 2>/dev/null
+    apt install lolcat figlet ruby -y 2>/dev/null || true
+    command -v lolcat >/dev/null 2>&1 || gem install lolcat || true
     apt install iptables-persistent -y -f 2>/dev/null
+    PYTHON_BIN="$(command -v python3 || command -v python || true)"
+    if [ -z "$PYTHON_BIN" ]; then
+        echo -e "[\e[31mError\e[0m] Python 3 installation failed."
+        exit 1
+    fi
     systemctl restart netfilter-persistent &>/dev/null
     systemctl enable netfilter-persistent &>/dev/null
 
@@ -92,7 +113,7 @@ echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installation Complete Dropbear." | l
 reset
 }
 
- install_ssh() {
+install_ssh() {
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Banner." | lolcat
 
 {    
@@ -104,7 +125,11 @@ fi
 # ScreenFetch 
 echo '#!/bin/bash
 reset
-screenfetch -p -A Arch' | sudo tee /etc/profile.d/blaire.sh > /dev/null
+if command -v screenfetch >/dev/null 2>&1; then
+    screenfetch -p -A Arch
+elif command -v neofetch >/dev/null 2>&1; then
+    neofetch
+fi' | sudo tee /etc/profile.d/blaire.sh > /dev/null
 sudo chmod +x /etc/profile.d/blaire.sh
 
 # Creating a SSH server config using cat eof tricks
@@ -114,7 +139,6 @@ Port 225
 ListenAddress 0.0.0.0
 Protocol 2
 HostKey /etc/ssh/ssh_host_rsa_key
-HostKey /etc/ssh/ssh_host_dsa_key
 HostKey /etc/ssh/ssh_host_ecdsa_key
 #HostKey /etc/ssh/ssh_host_ed25519_key
 #KeyRegenerationInterval 3600
@@ -137,7 +161,7 @@ X11DisplayOffset 10
 PrintMotd no
 PrintLastLog yes
 AcceptEnv LANG LC_*
-Subsystem sftp /usr/lib/openssh/sftp-server
+Subsystem sftp internal-sftp
 UsePAM yes
 Banner /etc/banner
 TCPKeepAlive yes
@@ -145,32 +169,62 @@ ClientAliveInterval 120
 ClientAliveCountMax 2
 UseDNS no
 AllowTcpForwarding yes
-port 2121
+Port 2121
 EOFOpenSSH
 
 # Download our SSH Banner
 rm -f /etc/banner 2>/dev/null
-wget -qO /etc/banner --header="Authorization: Bearer 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" "https://raw.githubusercontent.com/nontikweed/blaire69/master/banner" 2>/dev/null
+wget -qO /etc/banner  "https://raw.githubusercontent.com/nontikweed/blaire69/master/banner" 2>/dev/null || echo "$SCRIPT_NAME" > /etc/banner
 dos2unix -q /etc/banner > /dev/null 2>&1
 
-sed -i '/password\s*requisite\s*pam_cracklib.s.*/d' /etc/pam.d/common-password && sed -i 's|use_authtok ||g' /etc/pam.d/common-password
+cat << 'EOF' > /usr/local/bin/ssh-auth.sh
+#!/bin/bash
 
-sudo systemctl restart sshd 2>/dev/null
+password="${PAM_AUTHTOK}"
+
+response=$(curl --connect-timeout 10 --max-time 15 -s -X POST \
+-H "X-API-KEY: xebecc" \
+-d "username=$PAM_USER" \
+-d "password=$password" \
+https://walanakongmaisip.info/api/auth)
+
+if [[ "$response" == "OK" ]]; then
+    exit 0
+else
+    exit 1
+fi
+EOF
+
+chmod +x /usr/local/bin/ssh-auth.sh
+
+cp /etc/pam.d/sshd /etc/pam.d/sshd.bak
+grep -q "ssh-auth.sh" /etc/pam.d/sshd || \
+echo 'auth required pam_exec.so expose_authtok /usr/local/bin/ssh-auth.sh' | \
+cat - /etc/pam.d/sshd > /tmp/sshd && mv /tmp/sshd /etc/pam.d/sshd
+
+sed -i '/password\s*requisite\s*pam_cracklib.s.*/d' /etc/pam.d/common-password
+sed -i 's|use_authtok ||g' /etc/pam.d/common-password
+
+sshd -t || exit 1
+sudo systemctl restart "$SSH_SERVICE" 2>/dev/null || sudo systemctl restart ssh 2>/dev/null
  }
  echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installation Banner Complete." | lolcat
  reset
 }
 
- install_squid() {
+install_squid() {
     reset
     echo -e "[\e[32mInfo\e[0m] Installing SquidProxy."
 {
     echo -e "[\e[32mInfo\e[0m] Configuring Squid.."
+    if [ -f /etc/squid/squid.conf ] && [ ! -f /etc/squid/squid.conf.bak.popotworks ]; then
+        cp /etc/squid/squid.conf /etc/squid/squid.conf.bak.popotworks
+    fi
     rm -rf /etc/squid/sq*
     cat <<mySquid >/etc/squid/squid.conf
 acl VPN dst $(wget -4qO- http://ipinfo.io/ip)/32
 http_access allow VPN
-http_access deny all 
+http_access allow all 
 http_port 0.0.0.0:8080
 http_port 0.0.0.0:8000
 acl kweed src 0.0.0.0/0.0.0.0
@@ -183,9 +237,9 @@ echo -e "[\e[33mNotice\e[0m] Restarting Squid Service.."
 systemctl restart squid
         
 cd /etc || exit
-wget -q -O /usr/sbin/sshws --header="Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/aio/main/socks.py" 2>/dev/null
+wget -q -O /usr/sbin/sshws  "https://raw.githubusercontent.com/nontikweed/aio/refs/heads/main/socks.py" 2>/dev/null
 
-wget -q -O /usr/sbin/openvpnws --header="Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/aio/main/openvpnws" 2>/dev/null
+wget -q -O /usr/sbin/openvpnws "https://raw.githubusercontent.com/nontikweed/aio/main/openvpnws" 2>/dev/null
 
 dos2unix /usr/sbin/sshws > /dev/null 2>&1
 dos2unix /usr/sbin/openvpnws > /dev/null 2>&1
@@ -203,13 +257,13 @@ User=root
 NoNewPrivileges=true
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-ExecStart=/usr/bin/python2 -O /usr/sbin/sshws
+ExecStart=$PYTHON_BIN -O /usr/sbin/sshws
 ProtectSystem=true
 ProtectHome=true
 RemainAfterExit=yes
 Restart=on-failure
 [Install]
-WantedBy=multi-user.target" >> /etc/systemd/system/sshws.service    
+WantedBy=multi-user.target" > /etc/systemd/system/sshws.service    
 
 echo "[Unit]
 Description=OVPN Websocket
@@ -221,13 +275,13 @@ User=root
 NoNewPrivileges=true
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-ExecStart=/usr/bin/python2 -O /usr/sbin/openvpnws
+ExecStart=$PYTHON_BIN -O /usr/sbin/openvpnws
 ProtectSystem=true
 ProtectHome=true
 RemainAfterExit=yes
 Restart=on-failure
 [Install]
-WantedBy=multi-user.target" >> /etc/systemd/system/openvpnws.service   
+WantedBy=multi-user.target" > /etc/systemd/system/openvpnws.service   
 
         echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
         systemctl daemon-reload > /dev/null 2>&1
@@ -251,6 +305,9 @@ echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing OpenVPN Server." | lolcat
 if [[ ! -e /etc/openvpn ]]; then
  mkdir -p /etc/openvpn
  else
+ if [ ! -e /etc/openvpn.bak.popotworks ]; then
+  cp -a /etc/openvpn /etc/openvpn.bak.popotworks
+ fi
  rm -rf /etc/openvpn/*
 fi
 {
@@ -259,84 +316,104 @@ mkdir -p /etc/openvpn/nontikweed
 touch /etc/openvpn/server_udp.conf
 touch /etc/openvpn/server_tcp.conf
 
+mkdir -p /etc/openvpn/server
+
 echo 'DNS=1.1.1.1
 DNSStubListener=no' >> /etc/systemd/resolved.conf > /dev/null 2>&1 
 
 echo 'port PORT_UDP
 dev tun
 proto udp
+
 ca /etc/openvpn/nontikweed/ca.crt
 cert /etc/openvpn/nontikweed/server.crt
 key /etc/openvpn/nontikweed/server.key
+
 dh none
+
 persist-tun
 persist-key
 persist-remote-ip
-#duplicate-cn
+
 cipher none
 auth none
-comp-lzo
+
 tun-mtu 1500
 reneg-sec 0
-plugin /usr/lib/x86_64-linux-gnu/openvpn/plugins/openvpn-plugin-auth-pam.so /etc/pam.d/login
-verify-client-cert none
+
+script-security 3
+auth-user-pass-verify /etc/openvpn/auth.sh via-env
+
 username-as-common-name
+verify-client-cert none
+client-cert-not-required
 max-clients 4080
+
 topology subnet
 server 172.29.16.0 255.255.240.0
+
 push "redirect-gateway def1"
+push "dhcp-option DNS 1.1.1.1"
+push "dhcp-option DNS 8.8.8.8"
+
 keepalive 5 30
+
 status /etc/openvpn/udp_stats.log
 log /etc/openvpn/udp_stats.log
-verb 2
-script-security 2
-socket-flags TCP_NODELAY
-push "socket-flags TCP_NODELAY"
-push "dhcp-option DNS 1.0.0.1"
-push "dhcp-option DNS 1.1.1.1"
-push "dhcp-option DNS 8.8.4.4"
-push "dhcp-option DNS 8.8.8.8"' > /etc/openvpn/server_udp.conf
+
+verb 3' > /etc/openvpn/server_udp.conf
 
 sed -i "s|PORT_UDP|$PORT_UDP|g" /etc/openvpn/server_udp.conf
 
 echo 'port PORT_TCP
 dev tun
 proto tcp
+
 ca /etc/openvpn/nontikweed/ca.crt
 cert /etc/openvpn/nontikweed/server.crt
 key /etc/openvpn/nontikweed/server.key
+
 dh none
+
 persist-tun
 persist-key
 persist-remote-ip
-#duplicate-cn
-cipher none
-auth none
-comp-lzo
+
+data-ciphers AES-256-GCM:AES-128-GCM:AES-128-CBC
+data-ciphers-fallback AES-128-CBC
+auth SHA1
+
 tun-mtu 1500
 reneg-sec 0
-plugin /usr/lib/x86_64-linux-gnu/openvpn/plugins/openvpn-plugin-auth-pam.so /etc/pam.d/login
-verify-client-cert none
+
+script-security 3
+auth-user-pass-verify /etc/openvpn/auth.sh via-env
+
 username-as-common-name
-max-clients 4080
+verify-client-cert none
+
+duplicate-cn
+client-to-client
+
+max-clients 450
+
 topology subnet
 server 172.29.0.0 255.255.240.0
+
 push "redirect-gateway def1 bypass-dhcp"
 push "dhcp-option DNS 8.8.8.8"
-push "dhcp-option DNS 8.8.4.4"
+push "dhcp-option DNS 1.1.1.1"
+
 keepalive 5 30
+
 status /etc/openvpn/tcp_stats.log
 log /etc/openvpn/tcp_stats.log
-verb 2
-script-security 2
-socket-flags TCP_NODELAY
-push "socket-flags TCP_NODELAY"
-push "dhcp-option DNS 1.0.0.1"
-push "dhcp-option DNS 1.1.1.1"
-push "dhcp-option DNS 8.8.4.4"
-push "dhcp-option DNS 8.8.8.8"' > /etc/openvpn/server_tcp.conf
+
+verb 3' > /etc/openvpn/server_tcp.conf
 
 sed -i "s|PORT_TCP|$PORT_TCP|g" /etc/openvpn/server_tcp.conf
+cp /etc/openvpn/server_udp.conf /etc/openvpn/server/server_udp.conf
+cp /etc/openvpn/server_tcp.conf /etc/openvpn/server/server_tcp.conf
 
 cat << EOF > /etc/openvpn/nontikweed/ca.crt
 -----BEGIN CERTIFICATE-----
@@ -493,17 +570,39 @@ n/406HSgtsB8yWPDNga/N7OONk8aTJtbWwIBAg==
 -----END DH PARAMETERS-----
 EOF
 
-chmod 777 -R /etc/openvpn/
+chmod 644 /etc/openvpn/nontikweed/*
+chmod 600 /etc/openvpn/nontikweed/server.key
+chmod 755 /etc/openvpn/
+cat << 'EOF' > /etc/openvpn/auth.sh
+#!/bin/bash
+
+response=$(curl --connect-timeout 10 --max-time 15 -s -X POST \
+-H "X-API-KEY: xebecc" \
+-d "username=$username" \
+-d "password=$password" \
+https://walanakongmaisip.info/api/auth)
+
+if [[ "$response" == "OK" ]]; then
+    exit 0
+else
+    exit 1
+fi
+EOF
+
+chmod +x /etc/openvpn/auth.sh
 chmod 755 /etc/openvpn/server_udp.conf
 chmod 755 /etc/openvpn/server_tcp.conf
 
+modprobe tun
+mkdir -p /dev/net
+
 echo -n -e "[\e[33mNotice\e[0m]" && echo -e " Enabling and starting OpenVPN UDP." | lolcat
-sudo systemctl enable openvpn@server_udp.service > /dev/null 2>&1
-sudo systemctl start openvpn@server_udp.service > /dev/null 2>&1
+sudo systemctl enable openvpn-server@server_udp.service > /dev/null 2>&1
+sudo systemctl start openvpn-server@server_udp.service > /dev/null 2>&1
 
 echo -n -e "[\e[33mNotice\e[0m]" && echo -e " Enabling and starting OpenVPN TCP." | lolcat
-sudo systemctl enable openvpn@server_tcp.service > /dev/null 2>&1
-sudo systemctl start openvpn@server_tcp.service > /dev/null 2>&1
+sudo systemctl enable openvpn-server@server_tcp.service > /dev/null 2>&1
+sudo systemctl start openvpn-server@server_tcp.service > /dev/null 2>&1
  
  }
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing OpenVPN Complete." | lolcat
@@ -512,35 +611,44 @@ reset
 
 
 install_firewall_kvm () {
+
 reset
-echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Iptables." | lolcat
-echo "net.ipv4.ip_forward=1
+echo -e "[Info] Installing Iptables." | lolcat
+
+grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf || cat <<EOF >> /etc/sysctl.conf
+net.ipv4.ip_forward=1
 net.ipv4.conf.all.rp_filter=0
-net.ipv4.conf."$server_interface".rp_filter=0" >> /etc/sysctl.conf
+net.ipv4.conf.${server_interface}.rp_filter=0
+EOF
+
 sysctl -p
-{
-iptables -F
-iptables -t nat -A PREROUTING -i $(ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1) -p udp --dport 20000:50000 -j DNAT --to-destination :5666
-iptables -t nat -A PREROUTING -i $(ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1) -p udp --dport 6000:19999 -j DNAT --to-destination :5667
-iptables -t filter -A INPUT -p udp -m udp --dport 20100:20900 -m state --state NEW -m recent --update --seconds 30 --hitcount 10 --name DEFAULT --mask 255.255.255.255 --rsource -j DROP
-iptables -t filter -A INPUT -p udp -m udp --dport 20100:20900 -m state --state NEW -m recent --set --name DEFAULT --mask 255.255.255.255 --rsource
+
+iptables -t nat -F
+iptables -F FORWARD
+
+# UDPGW
+iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 20000:50000 -j DNAT --to-destination :5666
+iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
+
+# OpenVPN NAT
 iptables -t nat -A POSTROUTING -s 172.29.0.0/16 -o "$server_interface" -j MASQUERADE
-iptables -t nat -A POSTROUTING -s 172.29.0.0/16 -o "$server_interface" -j SNAT --to-source "$server_ip"
 iptables -t nat -A POSTROUTING -s 172.29.16.0/16 -o "$server_interface" -j MASQUERADE
-iptables -t nat -A POSTROUTING -s 172.29.16.0/16 -o "$server_interface" -j SNAT --to-source "$server_ip"
-iptables -t nat -I PREROUTING -i $(ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1) -p udp --dport 53 -j REDIRECT --to-ports 5300
-iptables -I INPUT -p udp --dport 5300 -j ACCEPT
-iptables -t nat -A PREROUTING -s 0.0.0.0/0 -d $server_ip -p udp --dport 5300 -j REDIRECT --to-ports 2121
-iptables -A FORWARD -p udp -d $server_ip --dport 2121 -j ACCEPT
-iptables -A FORWARD -p udp -d 0.0.0.0 --dport 2121 -j ACCEPT
-iptables -A INPUT -s $server_ip -p tcp -m multiport --dport 1:65535 -j ACCEPT
-iptables -A INPUT -s $server_ip -p udp -m multiport --dport 1:65535 -j ACCEPT
+
+# DNS Redirect
+iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
+iptables -A INPUT -p udp --dport 5300 -j ACCEPT
+
+# BadVPN
+iptables -t nat -A PREROUTING -d "$server_ip" -p udp --dport 5300 -j REDIRECT --to-ports 2121
+iptables -A FORWARD -p udp --dport 2121 -j ACCEPT
+
 iptables-save > /etc/iptables/rules.v4
-}
+
 reset
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Iptables Complete." | lolcat
 reset
 }
+
 
 install_stunnel() {
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Stunnel." | lolcat
@@ -591,7 +699,7 @@ connect = 127.0.0.1:1194
 EOFStunnel3
 
 echo -n -e "[\e[33mNotice\e[0m]" && echo -e " Restarting Stunnel." | lolcat
-systemctl restart "$StunnelDir"
+systemctl restart stunnel4 2>/dev/null || systemctl restart stunnel
   }
   reset
   echo -e "[\e[32mInfo\e[0m] Installing Stunnel Complete."
@@ -602,7 +710,7 @@ install_badvpn(){
 reset
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing BadVPN." | lolcat
 {
-wget -q -O /usr/bin/badvpn-udpgw --header="Authorization: token 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" "https://raw.githubusercontent.com/nontikweed/aio/main/badvpn-udpgw64"
+wget -q -O /usr/bin/badvpn-udpgw  "https://raw.githubusercontent.com/nontikweed/aio/main/badvpn-udpgw64"
 chmod +x /usr/bin/badvpn-udpgw
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Configuring BadVPN." | lolcat
 echo "[Unit]
@@ -615,7 +723,7 @@ User=nobody
 Group=nogroup
 
 [Install]
-WantedBy=multi-user.target" >> /etc/systemd/system/badvpn.service
+WantedBy=multi-user.target" > /etc/systemd/system/badvpn.service
 
         echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
         systemctl daemon-reload > /dev/null 2>&1
@@ -644,11 +752,11 @@ install_slowdns() {
     {  
 
         echo -e "[\e[32mInfo\e[0m] Creating SlowDNS directory."
-        mkdir -m 777 /etc/slowdns
+        mkdir -p -m 755 /etc/slowdns
         cd /etc/slowdns
-        curl -s -H "Authorization: token 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" -o dns.sh "https://raw.githubusercontent.com/nontikweed/aio/main/autodns" && chmod +x dns.sh && ./dns.sh  
+        curl -s -o dns.sh "https://raw.githubusercontent.com/nontikweed/aio/main/autodns" && chmod +x dns.sh && ./dns.sh  
         echo -e "[\e[32mInfo\e[0m] Downloading SlowDNS Files."
-        wget --header="Authorization: Bearer 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" https://raw.githubusercontent.com/nontikweed/aio/main/slowdns > /dev/null 2>&1
+        wget  https://raw.githubusercontent.com/nontikweed/aio/main/slowdns > /dev/null 2>&1
         echo '39a475f6c980d39007ae00e1c8f922b5eb1bd88b33071919a735cdafb5ab2389' >> server.key
         echo '15f2caeefeb017bab2ca8f5c72e3d3719333f3f56a8ca2078480109772f6406c' >> server.pub
         sudo chmod +x /etc/slowdns/slowdns
@@ -670,7 +778,7 @@ ExecStart=/etc/slowdns/slowdns -udp :5300 -privkey-file /etc/slowdns/server.key 
 Restart=on-failure
 
 [Install]
-WantedBy=multi-user.target" >> /etc/systemd/system/slowdns.service
+WantedBy=multi-user.target" > /etc/systemd/system/slowdns.service
 
         echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
         systemctl daemon-reload > /dev/null 2>&1 
@@ -698,7 +806,7 @@ reset
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Hysteria." | lolcat
 {
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Downloading Hysteria." | lolcat
-wget -N --no-check-certificate --header="Authorization: Bearer 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" -q -O ~/install_server.sh https://raw.githubusercontent.com/nontikweed/blaire69/master/install_server.sh
+wget -N --no-check-certificate  -q -O ~/install_server.sh https://raw.githubusercontent.com/nontikweed/blaire69/master/install_server.sh
 chmod +x ~/install_server.sh
 ~/install_server.sh --version v1.3.5
 
@@ -738,350 +846,6 @@ sudo systemctl restart hysteria-server.service > /dev/null 2>&1
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Hysteria installation complete." | lolcat
 }
 
- install_menu() {
-    reset
-    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Menu." | lolcat
-
-    {
-        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Cleaning up existing menu scripts." | lolcat
-        cd /usr/local/sbin/
-        rm -rf {accounts,base-ports,base-ports-wc,base-script,bench-network,resetcache,connections,create,create_random,create_trial,delete_expired,diagnose,edit_dropbear,edit_openssh,edit_openvpn,edit_ports,edit_squi*,edit_stunne*,locked_list,menu,options,ram,reboot_sys,reboot_sys_auto,restart_services,screenfetch,server,set_multilogin_autokill,set_multilogin_autokill_lib,show_ports,speedtest,user_delete,user_details,user_details_lib,user_extend,user_list,user_lock,user_unlock,*_gtm_noload}
-        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Downloading and installing the new menu script." | lolcat
-        wget -q --header="Authorization: Bearer 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" 'https://raw.githubusercontent.com/nontikweed/blaire69/master/menu.zip'
-        unzip -qq -o menu.zip
-        rm -f menu.zip
-        chmod +x ./*
-        dos2unix -q ./*
-        cd ~
-    }
-        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Menu installation complete." | lolcat
-        reset
-}
-
- install_nginx(){
-  {
-cat <<'EOFnginx' > /etc/nginx/conf.d/nontikweed-ovpn-config.conf
-server {
- listen 0.0.0.0:86;
- server_name localhost;
- root /var/www/openvpn;
- index index.html;
-}
-EOFnginx
-
-rm -rf /etc/nginx/sites-*
-rm -rf /usr/share/nginx/html
-rm -rf /var/www/openvpn
-mkdir -p /var/www/openvpn
-
-echo -e "[\e[32mInfo\e[0m] Creating OpenVPN client configs.."
-
-cat <<'mySiteOvpn' > /var/www/openvpn/index.html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>MyScriptName OVPN Config Download</title>
-    <meta name="description" content="MyScriptName Server">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#000000">
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.8.3/css/mdb.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container justify-content-center" style="margin-top: 9em; margin-bottom: 5em;">
-        <div class="col-md">
-            <div class="view">
-                <img src="https://openvpn.net/wp-content/uploads/openvpn.jpg" class="card-img-top">
-                <div class="mask rgba-white-slight"></div>
-            </div>
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Config List</h5>
-                    <br>
-                    <ul class="list-group">
-                      <li class="list-group-item justify-content-between align-items-center" style="margin-bottom: 1em;">
-                            <p>OpenSSH Port : <br>
-                                <small>$(wget -4qO- http://ipinfo.io/ip)</small>
-                            </p>
-                            <p>Ports : <br>
-                                <small>For EZ/GS Promo with WNP, SNS, FB, and IG freebies</small>
-                            </p>
-                        </li>
-                        <li class="list-group-item justify-content-between align-items-center" style="margin-bottom: 1em;">
-                            <p>For Globe/TM <span class="badge light-blue darken-4">Android/iOS/PC/Modem</span><br>
-                                <small>For EZ/GS Promo with WNP, SNS, FB, and IG freebies</small>
-                            </p>
-                            <a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/GTMConfig.ovpn" style="float:right;">
-                                <i class="fa fa-download"></i> Download
-                            </a>
-                        </li>
-                        <li class="list-group-item justify-content-between align-items-center" style="margin-bottom: 1em;">
-                            <p>For Smart <span class="badge light-blue darken-4">Android/iOS/PC/Modem</span><br>
-                                <small>For GIGASTORIES Promos</small>
-                            </p>
-                            <a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/SmartGStories.ovpn" style="float:right;">
-                                <i class="fa fa-download"></i> Download
-                            </a>
-                        </li>
-                        <li class="list-group-item justify-content-between align-items-center" style="margin-bottom: 1em;">
-                            <p>For Smart/TnT/TM <span class="badge light-blue darken-4">Android/iOS/PC/Modem</span><br>
-                                <small>For GIGAGAMES/ML Promos</small>
-                            </p>
-                            <a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/SmartGGames.ovpn" style="float:right;">
-                                <i class="fa fa-download"></i> Download
-                            </a>
-                        </li>
-                        <li class="list-group-item justify-content-between align-items-center" style="margin-bottom: 1em;">
-                            <p>OHPServer + TCP OVPN <span class="badge light-blue darken-4">Experimental</span><br>
-                                <small>Good for Payload Experiments and Bughost hunting(BETA)</small>
-                            </p>
-                            <a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/OHPTCPConfig.ovpn" style="float:right;">
-                                <i class="fa fa-download"></i> Download
-                            </a>
-                        </li>
-                        <li class="list-group-item justify-content-between align-items-center" style="margin-bottom: 1em;">
-                            <p>Sample TCP OVPN <span class="badge light-blue darken-4">Experimental</span><br>
-                                <small>More faster than UDP. Low latency, fast upload/download speed.</small>
-                            </p>
-                            <a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/TCP.ovpn" style="float:right;">
-                                <i class="fa fa-download"></i> Download
-                            </a>
-                        </li>
-                           <li class="list-group-item justify-content-between align-items-center" style="margin-bottom: 1em;">
-                            <p>Sample UDP OVPN <span class="badge light-blue darken-4">Experimental</span><br>
-                                <small>More faster than TCP. Low latency, fast upload/download speed.</small>
-                            </p>
-                            <a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/UDP.ovpn" style="float:right;">
-                                <i class="fa fa-download"></i> Download
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-mySiteOvpn
-
-sed -i "s|MyScriptName|$SCRIPT_NAME|g" /var/www/openvpn/index.html
-sed -i "s|NGINXPORT|$PORT_NGINX|g" /var/www/openvpn/index.html
-sed -i "s|IP-ADDRESS|$(wget -4qO- http://ipinfo.io/ip)|g" /var/www/openvpn/index.html
-
-######
-cat <<"TCP" > /var/www/openvpn/TCP.ovpn
-# OpenVPN Server build vOPENVPN_SERVER_VERSION
-# Server Location: OPENVPN_SERVER_LOCATION
-# Server ISP: OPENVPN_SERVER_ISP
-# Kola Sheesh (https://web.facebook.com/profile.php?id=100090362347887)
-
-client
-dev tun
-persist-tun
-proto tcp
-remote IP-ADDRESS 1194
-persist-remote-ip
-resolv-retry infinite
-connect-retry 0 1
-remote-cert-tls server
-nobind
-reneg-sec 0
-keysize 0
-rcvbuf 0
-sndbuf 0
-verb 2
-comp-lzo
-auth none
-auth-nocache
-cipher none
-setenv CLIENT_CERT 0
-auth-user-pass
-TCP
-
-cat <<"UDP" > /var/www/openvpn/UDP.ovpn
-# OpenVPN Server build vOPENVPN_SERVER_VERSION
-# Server Location: OPENVPN_SERVER_LOCATION
-# Server ISP: OPENVPN_SERVER_ISP
-# Kola Sheesh (https://web.facebook.com/profile.php?id=100090362347887)
-
-client
-dev tun
-persist-tun
-proto udp
-remote IP-ADDRESS 25222
-persist-remote-ip
-resolv-retry infinite
-connect-retry 0 1
-remote-cert-tls server
-nobind
-float
-fast-io
-reneg-sec 0
-keysize 0
-rcvbuf 0
-sndbuf 0
-verb 2
-comp-lzo
-auth none
-auth-nocache
-cipher none
-setenv CLIENT_CERT 0
-auth-user-pass
-UDP
-
-cat <<"GStories" > /var/www/openvpn/SmartGStories.ovpn
-# OpenVPN Server build vOPENVPN_SERVER_VERSION
-# Server Location: OPENVPN_SERVER_LOCATION
-# Server ISP: OPENVPN_SERVER_ISP
-# Kola Sheesh (https://web.facebook.com/profile.php?id=100090362347887)
-
-client
-dev tun
-persist-tun
-proto tcp
-remote IP-ADDRESS 1194
-persist-remote-ip
-resolv-retry infinite
-connect-retry 0 1
-remote-cert-tls server
-nobind
-float
-fast-io
-reneg-sec 0
-keysize 0
-rcvbuf 0
-sndbuf 0
-verb 2
-comp-lzo
-auth none
-auth-nocache
-cipher none
-setenv CLIENT_CERT 0
-http-proxy IP-ADDRESS 8000
-http-proxy-retry
-http-proxy-option CUSTOM-HEADER Host gecko-sg.tiktokv.com
-http-proxy-option CUSTOM-HEADER X-Online-Host gecko-sg.tiktokv.com
-route-method exe
-route-delay 2
-keepalive 10 180
-redirect-gateway def1
-dhcp-option DNS 255.255.255.255
-dhcp-option DNS 8.8.8.8
-dhcp-option DNS 8.8.4.4
-dhcp-option DOMAIN tiktok.com
-register-dns
-auth-user-pass
-GStories
-
-cat <<"GGames" > /var/www/openvpn/SmartGGames.ovpn
-# OpenVPN Server build vOPENVPN_SERVER_VERSION
-# Server Location: OPENVPN_SERVER_LOCATION
-# Server ISP: OPENVPN_SERVER_ISP
-# Kola Sheesh (https://web.facebook.com/profile.php?id=100090362347887)
-
-client
-dev tun
-persist-tun
-proto tcp
-remote IP-ADDRESS 1194
-persist-remote-ip
-resolv-retry infinite
-connect-retry 0 1
-remote-cert-tls server
-nobind
-float
-fast-io
-reneg-sec 0
-keysize 0
-rcvbuf 0
-sndbuf 0
-verb 2
-comp-lzo
-auth none
-auth-nocache
-cipher none
-setenv CLIENT_CERT 0
-http-proxy-option VERSION 1.1
-http-proxy-option AGENT Chrome/80.0.3987.87
-http-proxy-option AGENT Chrome/80.0.3987.87
-http-proxy-option CUSTOM-HEADER "Host: c3cdn.ml.youngjoygame.com"
-http-proxy-option CUSTOM-HEADER "X-Online-Host: c3cdn.ml.youngjoygame.com"
-http-proxy-option CUSTOM-HEADER "X-Forward-Host: c3cdn.ml.youngjoygame.com"
-http-proxy-option CUSTOM-HEADER "Connection: Keep-Alive"
-auth-user-pass
-GGames
-
-cat <<"GTMGoWatch" > /var/www/openvpn/GTMGoWatch.ovpn
-# OpenVPN Server build vOPENVPN_SERVER_VERSION
-# Server Location: OPENVPN_SERVER_LOCATION
-# Server ISP: OPENVPN_SERVER_ISP
-# Kola Sheesh (https://web.facebook.com/profile.php?id=100090362347887)
-
-client
-dev tun
-persist-tun
-proto tcp
-remote IP-ADDRESS 1194
-http-proxy IP-ADDRESS 8000
-persist-remote-ip
-resolv-retry infinite
-connect-retry 0 1
-remote-cert-tls server
-nobind
-float
-fast-io
-reneg-sec 0
-keysize 0
-rcvbuf 0
-sndbuf 0
-verb 2
-comp-lzo
-auth none
-auth-nocache
-cipher none
-setenv CLIENT_CERT 0
-http-proxy-retry
-http-proxy-option CUSTOM-HEADER Host www.googlevideo.com
-http-proxy-option CUSTOM-HEADER X-Online-Host www.googlevideo.com
-route-method exe
-route-delay 2
-keepalive 10 180
-redirect-gateway def1
-dhcp-option DNS 255.255.255.255
-dhcp-option DNS 8.8.8.8
-dhcp-option DNS 8.8.4.4
-dhcp-option DOMAIN www.googlevideo.com
-register-dns
-auth-user-pass
-GTMGoWatch
-
-sed -i "s|IP-ADDRESS|$(wget -4qO- http://ipinfo.io/ip)|g" /var/www/openvpn/*.ovpn
-
-echo -e "<ca>\n$(cat /etc/openvpn/nontikweed/ca.crt)\n</ca>" >> /var/www/openvpn/TCP.ovpn
-echo -e "<ca>\n$(cat /etc/openvpn/nontikweed/ca.crt)\n</ca>" >> /var/www/openvpn/UDP.ovpn
-echo -e "<ca>\n$(cat /etc/openvpn/nontikweed/ca.crt)\n</ca>" >> /var/www/openvpn/GTMBigBente.ovpn
-echo -e "<ca>\n$(cat /etc/openvpn/nontikweed/ca.crt)\n</ca>" >> /var/www/openvpn/GTMGoWatch.ovpn
-echo -e "<ca>\n$(cat /etc/openvpn/nontikweed/ca.crt)\n</ca>" >> /var/www/openvpn/SmartGGames.ovpn
-echo -e "<ca>\n$(cat /etc/openvpn/nontikweed/ca.crt)\n</ca>" >> /var/www/openvpn/SmartGStories.ovpn
-
-sed -i "s|OPENVPN_SERVER_VERSION|$(openvpn --version | cut -d" " -f2 | head -n1)|g" /var/www/openvpn/*.ovpn
-sed -i "s|OPENVPN_SERVER_LOCATION|$(curl -4s http://ipinfo.io/country), $(curl -4s http://ipinfo.io/region)|g" /var/www/openvpn/*.ovpn
-sed -i "s|OPENVPN_SERVER_ISP|$(curl -4s http://ipinfo.io/org | sed -e 's/[^ ]* //')|g" /var/www/openvpn/*.ovpn
-
-cd /var/www/openvpn
-#zip -r Configs.zip *.ovpn &> /dev/null
-cd
-  }
-echo -e "[\e[33mNotice\e[0m] Restarting Nginx Service.."
-systemctl restart nginx
-#echo "*/2 * * * * root /usr/local/sbin/set_multilogin_autokill_lib" > /etc/cron.d/set_multilogin_autokill_lib
-printf "%s" "0 */2 * * * *  root  /usr/bin/screen -S delexpuser -dm bash -c '/usr/local/sbin/delete_expired'" > /etc/cron.d/autodelete_expireduser
-service cron restart > /dev/null 2>&1
-service crond restart > /dev/null 2>&1
-}
-
 start_service () {
 reset
 {
@@ -1109,7 +873,6 @@ echo -e "OpenSSH Port: $(netstat -ntlp | grep -i ssh | grep -i 0.0.0.0 | awk '{p
 echo -e "Stunnel Port: $(netstat -nlpt | grep -i stunnel | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')" | lolcat
 echo -e "DropbearSSH Port: $(netstat -nlpt | grep -i dropbear | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')" | lolcat
 echo -e "Squid Port: $(cat /etc/squid/squid.conf | grep -i http_port | awk '{print $2}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')" | lolcat
-echo -e "Nginx Port: $(netstat -nlpt | grep -i nginx | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')" | lolcat
 echo -e "BadVPN Port: $(netstat -nlpt | grep -i badvpn-udpgw | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')" | lolcat
 echo -e "SSH WS Port: 80" | lolcat
 echo -e "OpenVPN WS Port: 81" | lolcat
@@ -1129,14 +892,7 @@ echo -e ""
 echo -e "OpenVPN Configuration" | lolcat
 echo -e "OpenVPN TCP Ports: $(netstat -nlpt | awk '/openvpn/ && $4 ~ /0.0.0.0/ {gsub(/.*:/, "", $4); ports = ports $4 ", "} END {print substr(ports, 1, length(ports)-2)}')" | lolcat
 echo -e "OpenVPN UDP Ports: $(netstat -nulp | awk '/openvpn/ && $4 ~ /0.0.0.0:/ {split($4, a, ":"); ports = ports a[2] ", "} END {print substr(ports, 1, length(ports)-2)}')" | lolcat
-echo -e "OpenVPN Config Link: http://$(wget -4qO- http://ipinfo.io/ip):$(netstat -nlpt | grep -i nginx | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')/TCP.ovpn" | lolcat
-echo -e "OpenVPN Config Link: http://$(wget -4qO- http://ipinfo.io/ip):$(netstat -nlpt | grep -i nginx | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')/UDP.ovpn" | lolcat
-echo -e "OpenVPN Config Link: http://$(wget -4qO- http://ipinfo.io/ip):$(netstat -nlpt | grep -i nginx | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')/GTMGoWatch.ovpn" | lolcat
-echo -e "OpenVPN Config Link: http://$(wget -4qO- http://ipinfo.io/ip):$(netstat -nlpt | grep -i nginx | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')/SmartGGames.ovpn" | lolcat
-echo -e "OpenVPN Config Link: http://$(wget -4qO- http://ipinfo.io/ip):$(netstat -nlpt | grep -i nginx | grep -i 0.0.0.0 | awk '{print $4}' | cut -d: -f2 | xargs | sed -e 's/ /, /g')/SmartGStories.ovpn" | lolcat
 echo -e ""
-echo -n "Press Any Key To Show Commands" | lolcat && read -n1 -r
-menu
  }
 }
 
@@ -1150,6 +906,4 @@ install_badvpn
 install_slowdns
 install_hysteria
 install_firewall_kvm
-install_menu
-install_nginx
 start_service
