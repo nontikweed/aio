@@ -640,96 +640,132 @@ DNS=1.1.1.1
 DNSStubListener=no
 EOF
 
-    echo '# Openvpn Configuration by Kobe Kobz :)
-    dev tun
-    port 110
-    proto udp
-    topology subnet
-    server 10.30.0.0 255.255.252.0
-    ca /etc/openvpn/server/ca.crt
-    cert /etc/openvpn/server/server.crt
-    key /etc/openvpn/server/server.key
-    dh none
-    tls-server
-    tls-version-min 1.2
-    tls-cipher TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
-    cipher none
-    auth none
-    sndbuf 0
-    rcvbuf 0
-    keepalive 10 180
-    persist-key
-    persist-tun
-    ping-timer-rem
-    reneg-sec 0
-    user nobody
-    group nogroup
-    client-to-client
-    username-as-common-name
-    verify-client-cert none
-    client-cert-not-required
-    script-security 3
-    duplicate-cn
-    auth-user-pass-verify /etc/openvpn/auth.sh via-env
-    push "persist-key"
-    push "persist-tun"
-    push "dhcp-option DNS 1.1.1.1"
-    push "dhcp-option DNS 1.0.0.1"
-    push "redirect-gateway def1 bypass-dhcp"
-    push "sndbuf 0"
-    push "rcvbuf 0"
-    log /etc/openvpn/server/udpserver.log
-    status /etc/openvpn/server/client.log
-    ifconfig-pool-persist udpip.txt
-    status-version 2
-    verb 3' > /etc/openvpn/server/server_udp.conf
 
-    echo '# Openvpn Configuration by Kobe Kobz :)
-    dev tun
-    port 1194
-    proto tcp
-    topology subnet
-    server 10.20.0.0 255.255.252.0
-    ca /etc/openvpn/server/ca.crt
-    cert /etc/openvpn/server/server.crt
-    key /etc/openvpn/server/server.key
-    dh none
-    tls-server
-    tls-version-min 1.2
-    tls-cipher TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
-    cipher none
-    auth none
-    socket-flags TCP_NODELAY
-    sndbuf 0
-    rcvbuf 0
-    keepalive 10 120
-    persist-key
-    persist-tun
-    ping-timer-rem
-    reneg-sec 0
-    user nobody
-    group nogroup
-    client-to-client
-    username-as-common-name
-    verify-client-cert none
-    client-cert-not-required
-    script-security 3
-    duplicate-cn
-    auth-user-pass-verify /etc/openvpn/auth.sh via-env
-    push "socket-flags TCP_NODELAY"
-    push "persist-key"
-    push "persist-tun"
-    push "dhcp-option DNS 8.8.8.8"
-    push "dhcp-option DNS 8.8.4.4"
-    push "redirect-gateway def1 bypass-dhcp"
-    push "sndbuf 0"
-    push "rcvbuf 0"
-    log /etc/openvpn/server/tcpserver.log
-    status /etc/openvpn/server/client.log
-    ifconfig-pool-persist /etc/openvpn/server/tcpip.txt
-    status-version 2
-    verb 3
-    max-clients 450' > /etc/openvpn/server/server_tcp.conf
+echo '# OpenVPN UDP Configuration
+
+port 110
+proto udp
+
+dev tun
+topology subnet
+
+server 10.30.0.0 255.255.252.0
+
+ca /etc/openvpn/server/ca.crt
+cert /etc/openvpn/server/server.crt
+key /etc/openvpn/server/server.key
+
+dh none
+
+tls-server
+tls-version-min 1.2
+
+verify-client-cert none
+username-as-common-name
+
+auth-user-pass-verify /etc/openvpn/auth.sh via-env
+script-security 3
+
+data-ciphers AES-256-GCM:AES-128-GCM
+data-ciphers-fallback AES-256-GCM
+
+sndbuf 0
+rcvbuf 0
+
+keepalive 10 180
+
+persist-key
+persist-tun
+
+client-to-client
+duplicate-cn
+
+push "redirect-gateway def1 bypass-dhcp"
+
+push "dhcp-option DNS 1.1.1.1"
+push "dhcp-option DNS 1.0.0.1"
+
+push "persist-key"
+push "persist-tun"
+
+push "sndbuf 0"
+push "rcvbuf 0"
+
+user nobody
+group nogroup
+
+status /etc/openvpn/server/client.log
+status-version 2
+
+log /etc/openvpn/server/udpserver.log
+
+ifconfig-pool-persist /etc/openvpn/server/udpip.txt
+
+verb 3
+max-clients 450' > /etc/openvpn/server/server_udp.conf
+
+    echo '# OpenVPN TCP Configuration
+port 1194
+proto tcp
+
+dev tun
+topology subnet
+
+server 10.20.0.0 255.255.252.0
+
+ca /etc/openvpn/server/ca.crt
+cert /etc/openvpn/server/server.crt
+key /etc/openvpn/server/server.key
+
+dh none
+
+tls-server
+tls-version-min 1.2
+
+verify-client-cert none
+username-as-common-name
+
+auth-user-pass-verify /etc/openvpn/auth.sh via-env
+script-security 3
+
+data-ciphers AES-256-GCM:AES-128-GCM
+data-ciphers-fallback AES-256-GCM
+
+keepalive 10 120
+
+persist-key
+persist-tun
+
+sndbuf 0
+rcvbuf 0
+
+socket-flags TCP_NODELAY
+
+client-to-client
+duplicate-cn
+
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 1.1.1.1"
+push "dhcp-option DNS 8.8.8.8"
+
+push "persist-key"
+push "persist-tun"
+
+push "sndbuf 0"
+push "rcvbuf 0"
+
+user nobody
+group nogroup
+
+status /etc/openvpn/server/client.log
+status-version 2
+
+log /etc/openvpn/server/tcpserver.log
+
+ifconfig-pool-persist /etc/openvpn/server/tcpip.txt
+
+verb 3
+max-clients 450' > /etc/openvpn/server/server_tcp.conf
 
     cat <<'EOF' > /etc/openvpn/server/ca.crt
 -----BEGIN CERTIFICATE-----
