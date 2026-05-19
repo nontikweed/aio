@@ -835,7 +835,8 @@ openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=PH/ST=Bulacan
 
 rm -f /etc/hysteria/config.json
 
-echo '{
+cat <<EOF > /etc/hysteria/config.json
+{
   "listen": ":5666",
   "cert": "/etc/hysteria/hysteria.crt",
   "key": "/etc/hysteria/hysteria.key",
@@ -848,7 +849,7 @@ echo '{
     "config": ["blaire"]
   }
 }
-' >> /etc/hysteria/config.json
+EOF
 
 chmod 755 /etc/hysteria/config.json
 chmod 755 /etc/hysteria/hysteria.crt
