@@ -867,6 +867,82 @@ sudo systemctl restart hysteria-server.service > /dev/null 2>&1
 echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Hysteria installation complete." | lolcat
 }
 
+install_hysteria2() {
+
+reset
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Hysteria2." | lolcat
+
+{
+
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Downloading Hysteria2." | lolcat
+
+bash <(curl -fsSL https://get.hy2.sh/)
+
+mkdir -p /etc/hysteria
+
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Generating Certificate." | lolcat
+
+openssl req -x509 -nodes -newkey rsa:2048 \
+-keyout /etc/hysteria/server.key \
+-out /etc/hysteria/server.crt \
+-days 3650 \
+-subj "/C=PH/ST=Manila/L=Manila/O=Nontikweed/OU=VPN/CN=bing.com" >/dev/null 2>&1
+
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Creating Config." | lolcat
+
+cat <<EOF > /etc/hysteria/config.yaml
+listen: :5666
+
+tls:
+  cert: /etc/hysteria/server.crt
+  key: /etc/hysteria/server.key
+
+auth:
+  type: password
+  password: blaire
+
+obfs:
+  type: salamander
+  salamander:
+    password: ${HY2_OBFS:-nontikweed}
+
+bandwidth:
+  up: 100 mbps
+  down: 100 mbps
+
+ignoreClientBandwidth: false
+
+quic:
+  initStreamReceiveWindow: 26843545
+  maxStreamReceiveWindow: 26843545
+  initConnReceiveWindow: 67108864
+  maxConnReceiveWindow: 67108864
+
+masquerade:
+  type: proxy
+  proxy:
+    url: https://bing.com
+    rewriteHost: true
+EOF
+
+chmod 755 /etc/hysteria/config.yaml
+chmod 755 /etc/hysteria/server.key
+chmod 755 /etc/hysteria/server.crt
+
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Enabling Hysteria2." | lolcat
+
+systemctl enable hysteria-server.service >/dev/null 2>&1
+
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Restarting Hysteria2." | lolcat
+
+systemctl restart hysteria-server.service >/dev/null 2>&1
+
+}
+
+echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Hysteria2 Installation Complete." | lolcat
+
+}
+
 start_service () {
 reset
 {
@@ -925,6 +1001,10 @@ install_openvpn
 install_stunnel
 install_badvpn
 install_slowdns
-install_hysteria
+if [[ "$HYSTERIA_VERSION" == "v2" ]]; then
+    install_hysteria2
+else
+    install_hysteria
+fi
 install_firewall_kvm
 start_service
