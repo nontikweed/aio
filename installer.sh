@@ -654,7 +654,6 @@ EOF
     tls-version-min 1.2
     tls-cipher TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
     cipher none
-    ncp-disable
     auth none
     sndbuf 0
     rcvbuf 0
@@ -699,7 +698,6 @@ EOF
     tls-version-min 1.2
     tls-cipher TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
     cipher none
-    ncp-disable
     auth none
     socket-flags TCP_NODELAY
     sndbuf 0
