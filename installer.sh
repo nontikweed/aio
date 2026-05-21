@@ -348,8 +348,6 @@ else
 fi
 
     mkdir -p /etc/openvpn/nontikweed
-    touch /etc/openvpn/server_udp.conf
-    touch /etc/openvpn/server_tcp.conf
 
     mkdir -p /etc/openvpn/server
 
@@ -398,7 +396,7 @@ EOF
     log /etc/openvpn/server/udpserver.log
     status /etc/openvpn/server/client.log
 
-    verb 3' > /etc/openvpn/server_udp.conf
+    verb 3' > /etc/openvpn/server/server_udp.conf
 
     sed -i "s|PORT_UDP|$PORT_UDP|g" /etc/openvpn/server_udp.conf
 
@@ -447,11 +445,9 @@ EOF
     log /etc/openvpn/server/tcpserver.log
     status /etc/openvpn/server/client.log
 
-    verb 3' > /etc/openvpn/server_tcp.conf
+    verb 3' > /etc/openvpn/server/server_tcp.conf
 
     sed -i "s|PORT_TCP|$PORT_TCP|g" /etc/openvpn/server_tcp.conf
-    cp /etc/openvpn/server_udp.conf /etc/openvpn/server/server_udp.conf
-    cp /etc/openvpn/server_tcp.conf /etc/openvpn/server/server_tcp.conf
 
     cat <<'EOF' > /etc/openvpn/nontikweed/ca.crt
 -----BEGIN CERTIFICATE-----
