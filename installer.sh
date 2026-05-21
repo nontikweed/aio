@@ -69,14 +69,14 @@ EOF
         apt install -y screen squid stunnel4 dropbear gnutls-bin 2>/dev/null
         apt install -y nano unzip jq virt-what net-tools 2>/dev/null
         apt install -y plocate dh-make libaudit-dev build-essential fail2ban 2>/dev/null || apt install -y mlocate dh-make libaudit-dev build-essential 2>/dev/null
-        apt install -y git curl wget cron python3 python3-minimal 2>/dev/null
+        apt install -y git curl wget cron python2 2>/dev/null
         apt install squid -y 2>/dev/null
         apt install lolcat figlet ruby -y 2>/dev/null || true
         command -v lolcat >/dev/null 2>&1 || gem install lolcat || true
         apt install iptables-persistent -y -f 2>/dev/null
-        PYTHON_BIN="$(command -v python3 || command -v python || true)"
+        PYTHON_BIN="$(command -v python2 || command -v python || true)"
         if [ -z "$PYTHON_BIN" ]; then
-            echo -e "[\e[31mError\e[0m] Python 3 installation failed."
+            echo -e "[\e[31mError\e[0m] Python2 installation failed."
             exit 1
         fi
         systemctl restart netfilter-persistent &>/dev/null
@@ -269,7 +269,7 @@ mySquid
     NoNewPrivileges=true
     CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
     AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    ExecStart=/usr/bin/python3 -O /usr/sbin/sshws
+    ExecStart=/usr/bin/python2 -O /usr/sbin/sshws
     ProtectSystem=true
     ProtectHome=true
     RemainAfterExit=yes
@@ -287,7 +287,7 @@ mySquid
     NoNewPrivileges=true
     CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
     AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    ExecStart=/usr/bin/python3 -O /usr/sbin/openvpnws
+    ExecStart=/usr/bin/python2 -O /usr/sbin/openvpnws
     ProtectSystem=true
     ProtectHome=true
     RemainAfterExit=yes
@@ -1156,6 +1156,7 @@ EOFStunnel3
         echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing SlowDNS Complete." | lolcat
         reset
     }
+
 install_hysteria() {
 
     reset
@@ -1214,7 +1215,11 @@ EOF
 
     chmod 644 /etc/hysteria/config.json
     chmod 644 /etc/hysteria/hysteria.crt
-    chmod 600 /etc/hysteria/hysteria.key
+    chmod 644 /etc/hysteria/hysteria.key
+
+    chown root:root /etc/hysteria/config.json 
+    chown root:root /etc/hysteria/hysteria.crt 
+    chown root:root /etc/hysteria/hysteria.key
 
     sysctl -w net.core.rmem_max=16777216 >/dev/null 2>&1
     sysctl -w net.core.wmem_max=16777216 >/dev/null 2>&1
@@ -1402,8 +1407,27 @@ fi
     echo -e "Hysteria Password: ${HY_PASS}" | lolcat
     echo -e ""
     echo -e "OpenVPN Configuration" | lolcat
-    echo -e "OpenVPN TCP Ports: $(netstat -nlpt | awk '/openvpn/ && $4 ~ /0.0.0.0/ {gsub(/.*:/, "", $4); ports = ports $4 ", "} END {print substr(ports, 1, length(ports)-2)}')" | lolcat
-    echo -e "OpenVPN UDP Ports: $(netstat -nulp | awk '/openvpn/ && $4 ~ /0.0.0.0:/ {split($4, a, ":"); ports = ports a[2] ", "} END {print substr(ports, 1, length(ports)-2)}')" | lolcat
+
+OVPN_TCP=$(ss -tlpn 2>/dev/null | awk '
+/openvpn/ {
+    split($4,a,":");
+    ports=ports a[length(a)] ", "
+}
+END {
+    print substr(ports,1,length(ports)-2)
+}')
+
+OVPN_UDP=$(ss -ulpn 2>/dev/null | awk '
+/openvpn/ {
+    split($5,a,":");
+    ports=ports a[length(a)] ", "
+}
+END {
+    print substr(ports,1,length(ports)-2)
+}')
+
+    echo -e "OpenVPN TCP Ports: ${OVPN_TCP:-Not Running}" | lolcat
+    echo -e "OpenVPN UDP Ports: ${OVPN_UDP:-Not Running}" | lolcat
     echo -e ""
     }
     }
