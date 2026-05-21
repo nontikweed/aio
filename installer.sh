@@ -69,7 +69,7 @@ EOF
         apt install -y screen squid stunnel4 dropbear gnutls-bin 2>/dev/null
         apt install -y nano unzip jq virt-what net-tools 2>/dev/null
         apt install -y plocate dh-make libaudit-dev build-essential fail2ban 2>/dev/null || apt install -y mlocate dh-make libaudit-dev build-essential 2>/dev/null
-        apt install -y git curl wget cron python2 2>/dev/null
+        apt install -y git curl wget cron python3 python3-minimal python-is-python3 2>/dev/null
         apt install squid -y 2>/dev/null
         apt install lolcat figlet ruby -y 2>/dev/null || true
         command -v lolcat >/dev/null 2>&1 || gem install lolcat || true
@@ -224,92 +224,116 @@ EOF
     reset
     }
 
-    install_squid() {
-        reset
-        echo -e "[\e[32mInfo\e[0m] Installing SquidProxy."
+install_squid() {
+
+    reset
+
+    echo -e "[\e[32mInfo\e[0m] Installing SquidProxy."
+
     {
+
         echo -e "[\e[32mInfo\e[0m] Configuring Squid.."
-        if [ -f /etc/squid/squid.conf ] && [ ! -f /etc/squid/squid.conf.bak.popotworks ]; then
-            cp /etc/squid/squid.conf /etc/squid/squid.conf.bak.popotworks
+
+        if [ -f /etc/squid/squid.conf ] && \
+        [ ! -f /etc/squid/squid.conf.bak.popotworks ]; then
+
+            cp /etc/squid/squid.conf \
+            /etc/squid/squid.conf.bak.popotworks
+
         fi
+
         rm -rf /etc/squid/sq*
-        cat <<mySquid >/etc/squid/squid.conf
+
+cat <<mySquid >/etc/squid/squid.conf
 acl VPN dst $(wget -4qO- http://ipinfo.io/ip)/32
 http_access allow VPN
 http_access deny all
+
 http_port 0.0.0.0:8080
 http_port 0.0.0.0:8000
+
 acl kweed src 0.0.0.0/0.0.0.0
 no_cache deny kweed
+
 dns_nameservers 1.1.1.1 1.0.0.1
+
 visible_hostname localhost
 mySquid
 
-    echo -e "[\e[33mNotice\e[0m] Restarting Squid Service.."
-    systemctl restart squid
-            
-    cd /etc || exit
-    wget -q -O /usr/sbin/sshws  "https://raw.githubusercontent.com/nontikweed/aio/main/socks.py" 2>/dev/null
+        echo -e "[\e[33mNotice\e[0m] Restarting Squid Service.."
 
-    wget -q -O /usr/sbin/openvpnws "https://raw.githubusercontent.com/nontikweed/aio/main/openvpnws" 2>/dev/null
+        systemctl restart squid
 
-    dos2unix /usr/sbin/sshws > /dev/null 2>&1
-    dos2unix /usr/sbin/openvpnws > /dev/null 2>&1
+        cd /etc || exit
 
-    chmod +x /usr/sbin/sshws > /dev/null 2>&1
-    chmod +x /usr/sbin/openvpnws > /dev/null 2>&1
+        wget -q -O /usr/sbin/sshws \
+        "https://raw.githubusercontent.com/nontikweed/aio/main/socks.py"
 
-    echo "[Unit]
-    Description=SSH Websocket
-    Documentation=https://google.com
-    After=network.target nss-lookup.target
-    [Service]
-    Type=simple
-    User=root
-    NoNewPrivileges=true
-    CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    ExecStart=/usr/bin/python2 -O /usr/sbin/sshws
-    ProtectSystem=true
-    ProtectHome=true
-    RemainAfterExit=yes
-    Restart=on-failure
-    [Install]
-    WantedBy=multi-user.target" > /etc/systemd/system/sshws.service    
+        wget -q -O /usr/sbin/openvpnws \
+        "https://raw.githubusercontent.com/nontikweed/aio/main/openvpnws"
 
-    echo "[Unit]
-    Description=OVPN Websocket
-    Documentation=https://google.com
-    After=network.target nss-lookup.target
-    [Service]
-    Type=simple
-    User=root
-    NoNewPrivileges=true
-    CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    ExecStart=/usr/bin/python2 -O /usr/sbin/openvpnws
-    ProtectSystem=true
-    ProtectHome=true
-    RemainAfterExit=yes
-    Restart=on-failure
-    [Install]
-    WantedBy=multi-user.target" > /etc/systemd/system/openvpnws.service   
+        dos2unix /usr/sbin/sshws >/dev/null 2>&1
+        dos2unix /usr/sbin/openvpnws >/dev/null 2>&1
 
-            echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
-            systemctl daemon-reload > /dev/null 2>&1
+        chmod +x /usr/sbin/sshws >/dev/null 2>&1
+        chmod +x /usr/sbin/openvpnws >/dev/null 2>&1
 
-            echo -e "[\e[33mNotice\e[0m] Enabling OpenVPN & SSHWebsocket Service."
-            sudo systemctl enable sshws > /dev/null 2>&1
-            sudo systemctl enable openvpnws > /dev/null 2>&1
+        sed -i '1s|#!/usr/bin/python|#!/usr/bin/python3|' /usr/sbin/sshws
+        sed -i '1s|#!/usr/bin/python|#!/usr/bin/python3|' /usr/sbin/openvpnws
 
-            echo -e "[\e[33mNotice\e[0m] Starting OpenVPN & SSHWebsocket Service."
-            sudo systemctl start sshws.service > /dev/null 2>&1
-            sudo systemctl start openvpnws.service > /dev/null 2>&1
-            
+        2to3 -w /usr/sbin/sshws >/dev/null 2>&1
+        2to3 -w /usr/sbin/openvpnws >/dev/null 2>&1
+
+echo "[Unit]
+Description=SSH Websocket
+Documentation=https://google.com
+After=network.target nss-lookup.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 -O /usr/sbin/sshws
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/sshws.service
+
+echo "[Unit]
+Description=OVPN Websocket
+Documentation=https://google.com
+After=network.target nss-lookup.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 -O /usr/sbin/openvpnws
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/openvpnws.service
+
+        echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
+
+        systemctl daemon-reload >/dev/null 2>&1
+
+        echo -e "[\e[33mNotice\e[0m] Enabling Websocket Services."
+
+        systemctl enable sshws >/dev/null 2>&1
+        systemctl enable openvpnws >/dev/null 2>&1
+
+        echo -e "[\e[33mNotice\e[0m] Restarting Websocket Services."
+
+        systemctl restart sshws >/dev/null 2>&1
+        systemctl restart openvpnws >/dev/null 2>&1
+
     }
+
     echo -e "[\e[32mInfo\e[0m] Installation SquidProxy Complete."
+
     sleep 5
-    }
+}
 
     install_openvpn1()
     {
