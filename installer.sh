@@ -269,7 +269,7 @@ mySquid
     NoNewPrivileges=true
     CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
     AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    ExecStart=$PYTHON_BIN -O /usr/sbin/sshws
+    ExecStart=/usr/bin/python3 -O /usr/sbin/sshws
     ProtectSystem=true
     ProtectHome=true
     RemainAfterExit=yes
@@ -287,7 +287,7 @@ mySquid
     NoNewPrivileges=true
     CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
     AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    ExecStart=$PYTHON_BIN -O /usr/sbin/openvpnws
+    ExecStart=/usr/bin/python3 -O /usr/sbin/openvpnws
     ProtectSystem=true
     ProtectHome=true
     RemainAfterExit=yes
@@ -358,9 +358,9 @@ EOF
     auth-user-pass-verify /etc/openvpn/auth.sh via-env
 
     username-as-common-name
+    auth SHA1
     verify-client-cert none
-    client-cert-not-required
-    max-clients 4080
+    max-clients 450
 
     topology subnet
     server 172.29.16.0 255.255.240.0
@@ -403,6 +403,7 @@ EOF
     auth-user-pass-verify /etc/openvpn/auth.sh via-env
 
     username-as-common-name
+    auth SHA1
     verify-client-cert none
 
     duplicate-cn
@@ -1155,16 +1156,18 @@ EOFStunnel3
         echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing SlowDNS Complete." | lolcat
         reset
     }
-
 install_hysteria() {
+
     reset
+
     echo -n -e "[\e[32mInfo\e[0m]"
     echo -e " Installing Hysteria." | lolcat
 
     echo -n -e "[\e[32mInfo\e[0m]"
     echo -e " Downloading Hysteria." | lolcat
 
-    wget -N --no-check-certificate -q -O ~/install_server.sh \
+    wget -N --no-check-certificate \
+    -q -O ~/install_server.sh \
     https://raw.githubusercontent.com/nontikweed/blaire69/master/install_server.sh
 
     chmod +x ~/install_server.sh
@@ -1176,40 +1179,55 @@ install_hysteria() {
 
     mkdir -p /etc/hysteria
 
-    openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
+    openssl req -new \
+    -newkey rsa:4096 \
+    -days 365 \
+    -nodes \
+    -x509 \
     -subj "/C=PH/ST=Bulacan/L=Central Luzon/O=Nethub VPN/OU=IT Department/CN=Nontikweed" \
-    -keyout "/etc/hysteria/hysteria.key" \
-    -out "/etc/hysteria/hysteria.crt" >/dev/null 2>&1
+    -keyout /etc/hysteria/hysteria.key \
+    -out /etc/hysteria/hysteria.crt >/dev/null 2>&1
 
-    rm -f /etc/hysteria/config.json
+    OBFS="${HY2_OBFS:-nontikweed}"
 
-cat <<'EOF' > /etc/hysteria/config.json
+    cat <<EOF > /etc/hysteria/config.json
 {
     "listen": ":5666",
     "cert": "/etc/hysteria/hysteria.crt",
     "key": "/etc/hysteria/hysteria.key",
+
     "up_mbps": 100,
     "down_mbps": 100,
+
     "disable_udp": false,
-    "obfs": "${HY2_OBFS:-nontikweed}",
+
+    "obfs": "${OBFS}",
+
     "auth": {
         "mode": "passwords",
-        "config": ["blaire"]
+        "config": [
+            "blaire"
+        ]
     }
 }
 EOF
 
-    chmod 755 /etc/hysteria/config.json
-    chmod 755 /etc/hysteria/hysteria.crt
+    chmod 644 /etc/hysteria/config.json
+    chmod 644 /etc/hysteria/hysteria.crt
     chmod 600 /etc/hysteria/hysteria.key
 
-    sysctl -w net.core.rmem_max=16777216 >/dev/null
-    sysctl -w net.core.wmem_max=16777216 >/dev/null
+    sysctl -w net.core.rmem_max=16777216 >/dev/null 2>&1
+    sysctl -w net.core.wmem_max=16777216 >/dev/null 2>&1
+
+    echo -n -e "[\e[32mInfo\e[0m]"
+    echo -e " Reloading Systemd." | lolcat
+
+    systemctl daemon-reexec >/dev/null 2>&1
+    systemctl daemon-reload >/dev/null 2>&1
 
     echo -n -e "[\e[32mInfo\e[0m]"
     echo -e " Enabling Hysteria Server." | lolcat
 
-    systemctl daemon-reload >/dev/null 2>&1
     systemctl enable hysteria-server.service >/dev/null 2>&1
 
     echo -n -e "[\e[32mInfo\e[0m]"
@@ -1217,8 +1235,26 @@ EOF
 
     systemctl restart hysteria-server.service >/dev/null 2>&1
 
+    sleep 2
+
+    if systemctl is-active --quiet hysteria-server.service; then
+
+        echo -n -e "[\e[32mInfo\e[0m]"
+        echo -e " Hysteria is running successfully." | lolcat
+
+    else
+
+        echo -n -e "[\e[31mError\e[0m]"
+        echo -e " Hysteria failed to start." | lolcat
+
+        journalctl -u hysteria-server.service \
+        -n 20 --no-pager
+    fi
+
     echo -n -e "[\e[32mInfo\e[0m]"
     echo -e " Hysteria installation complete." | lolcat
+
+    reset
 }
 
   install_hysteria2() {
@@ -1331,9 +1367,39 @@ EOF
     echo -e "Subdomain : $(cat /etc/slowdns/subd.txt)" | lolcat 
     echo -e ""
     echo -e "Hysteria Configuration" | lolcat
-    echo -e "Hysteria Port: $(netstat -nlptu | awk '/hysteria/ && /udp6/ {gsub(/.*:/, "", $4); ports = ports $4 ", "} END {print substr(ports, 1, length(ports)-2)}') [20000-50000]" | lolcat
-    echo -e "Hysteria OBFS: $(jq -r '.obfs' /etc/hysteria/config.json)" | lolcat
-    echo -e "Hysteria Password: $(jq -r '.auth.config[0]' /etc/hysteria/config.json)" | lolcat
+
+HY_PORT=$(netstat -nlptu 2>/dev/null | awk '
+/hysteria/ && /udp/ {
+    split($4,a,":");
+    port=a[length(a)];
+    print port;
+    exit
+}')
+
+if [ -f /etc/hysteria/config.json ]; then
+
+    HY_OBFS=$(jq -r '.obfs' /etc/hysteria/config.json 2>/dev/null)
+
+    HY_PASS=$(jq -r '.auth.config[0]' /etc/hysteria/config.json 2>/dev/null)
+
+elif [ -f /etc/hysteria/config.yaml ]; then
+
+    HY_OBFS=$(grep 'password:' /etc/hysteria/config.yaml \
+    | head -1 | awk '{print $2}')
+
+    HY_PASS=$(grep '^  password:' /etc/hysteria/config.yaml \
+    | awk '{print $2}')
+
+else
+
+    HY_OBFS="Not Found"
+
+    HY_PASS="Not Found"
+
+fi
+    echo -e "Hysteria Port: ${HY_PORT:-5666} [20000-50000]" | lolcat
+    echo -e "Hysteria OBFS: ${HY_OBFS}" | lolcat
+    echo -e "Hysteria Password: ${HY_PASS}" | lolcat
     echo -e ""
     echo -e "OpenVPN Configuration" | lolcat
     echo -e "OpenVPN TCP Ports: $(netstat -nlpt | awk '/openvpn/ && $4 ~ /0.0.0.0/ {gsub(/.*:/, "", $4); ports = ports $4 ", "} END {print substr(ports, 1, length(ports)-2)}')" | lolcat
