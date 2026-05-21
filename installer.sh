@@ -41,7 +41,7 @@
         SSH_SERVICE="sshd"
     fi
 
-    PYTHON_BIN="$(command -v python3 || true)"
+    PYTHON_BIN="$(command -v python2 || true)"
     if [ -z "$PYTHON_BIN" ] && command -v python >/dev/null 2>&1; then
         PYTHON_BIN="$(command -v python)"
     fi
