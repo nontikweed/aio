@@ -90,13 +90,22 @@ EOF
         reset
     }
 
-    install_dropbear() {
-    reset
-        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Dropbear." | lolcat
-    {    
-        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Configuring Dropbear." | lolcat
+  install_dropbear() {
 
-        cat <<'EOFDropbear' > /etc/default/dropbear
+
+reset
+
+echo -n -e "[\e[32mInfo\e[0m]"
+echo -e " Installing Dropbear." | lolcat
+
+{
+
+    echo -n -e "[\e[32mInfo\e[0m]"
+    echo -e " Configuring Dropbear." | lolcat
+
+    cat <<'EOFDropbear' > /etc/default/dropbear
+
+
 NO_START=0
 DROPBEAR_PORT=555
 DROPBEAR_EXTRA_ARGS="-p 550 -w"
@@ -107,12 +116,19 @@ DROPBEAR_ECDSAKEY="/etc/dropbear/dropbear_ecdsa_host_key"
 DROPBEAR_RECEIVE_WINDOW=65536
 EOFDropbear
 
-    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Restarting Dropbear." | lolcat
+
+    systemctl enable dropbear >/dev/null 2>&1
     systemctl restart dropbear
-    }
-    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installation Complete Dropbear." | lolcat
-    reset
-    }
+
+}
+
+echo -n -e "[\e[32mInfo\e[0m]"
+echo -e " Installation Complete Dropbear." | lolcat
+
+reset
+
+
+}
 
 install_ssh() {
 
@@ -130,7 +146,9 @@ echo -e " Installing OpenSSH." | lolcat
 
     cat <<'EOFSSH' > /etc/ssh/sshd_config
 
+
 # OpenSSH Configuration
+
 Port 22
 Port 225
 Port 2121
@@ -220,6 +238,7 @@ reset
 
 
 }
+
 
 install_squid() {
 
