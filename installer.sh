@@ -130,6 +130,110 @@ reset
 
 }
 
+install_user_api() {
+
+
+echo -n -e "[\e[32mInfo\e[0m]"
+echo -e " Installing User API." | lolcat
+
+{
+
+    mkdir -p /root/api
+
+    cat <<'EOFAPI' > /root/api/create-user.php
+<?php
+
+header('Content-Type: application/json');
+
+$apiKey = $_POST['api_key'] ?? '';
+
+if ($apiKey !== 'xebecc') {
+
+    http_response_code(403);
+
+    exit(json_encode([
+
+        'status' => false,
+
+        'message' => 'Invalid API key'
+
+    ]));
+}
+
+$username = $_POST['username'] ?? '';
+$password = $_POST['password'] ?? '';
+$expiry  = $_POST['expiry'] ?? '';
+
+if (
+    empty($username) ||
+    empty($password) ||
+    empty($expiry)
+) {
+
+    exit(json_encode([
+
+        'status' => false,
+
+        'message' => 'Missing fields'
+
+    ]));
+}
+
+$usernameSafe = escapeshellarg($username);
+
+$passwordSafe = escapeshellarg($password);
+
+shell_exec("
+    id {$usernameSafe} >/dev/null 2>&1 || \
+    useradd -e {$expiry} -M -s /bin/bash {$usernameSafe}
+");
+
+shell_exec("
+    echo {$usernameSafe}:{$passwordSafe} | chpasswd
+");
+
+shell_exec("
+    chage -E {$expiry} {$usernameSafe}
+");
+
+echo json_encode([
+
+    'status' => true,
+
+    'message' => 'User created'
+
+]);
+EOFAPI
+
+        cat <<'EOFSERVICE' > /etc/systemd/system/userapi.service
+[Unit]
+Description=User API Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/api
+ExecStart=/usr/bin/php -S 0.0.0.0:8888
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOFSERVICE
+
+        systemctl daemon-reload
+
+        systemctl enable userapi >/dev/null 2>&1
+
+        systemctl restart userapi
+
+    }
+
+    echo -n -e "[\e[32mInfo\e[0m]"
+    echo -e " Installation Complete User API." | lolcat
+}
+
+
 install_ssh() {
 
 
@@ -1534,6 +1638,7 @@ END {
 install_dependencies
 install_ssh
 install_dropbear
+install_user_api
 install_squid
 case "$OPENVPN_VERSION" in
     1)
