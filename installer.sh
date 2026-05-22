@@ -398,7 +398,7 @@ WantedBy=multi-user.target" > /etc/systemd/system/openvpnws.service
 
         verb 3' > /etc/openvpn/server/server_udp.conf
 
-        sed -i "s|PORT_TCP|$PORT_TCP|g" /etc/openvpn/server_tcp.conf
+        sed -i "s|PORT_TCP|$PORT_TCP|g" /etc/openvpn/server/server_tcp.conf
 
         echo 'port PORT_TCP
         dev tun
@@ -1456,16 +1456,10 @@ END {
     install_ssh
     install_dropbear
     install_squid
-    if [[ "$OPENVPN_VERSION" == "ovpn1" ]]; then
-
-        install_openvpn1
-
-    fi
-
-    if [[ "$OPENVPN_VERSION" == "ovpn2" ]]; then
-
-        install_openvpn2
-
+    if [ "$OPENVPN_VERSION" = "1" ]; then
+    install_openvpn1
+    else
+    install_openvpn2
     fi
     install_stunnel
     install_badvpn
