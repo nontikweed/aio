@@ -63,7 +63,7 @@ EOF
         export DEBIAN_FRONTEND=noninteractive 
         rm -rf /var/lib/dpkg/lock /var/{lib/apt/lists/lock,cache/apt/archives/lock}
         apt-get update
-        apt install -y dos2unix dnsutils nginx 
+        apt install -y dos2unix dnsutils nginx php-cli 2>/dev/null
         apt install -y sudo openvpn openssl libpam-script
         apt install -y netcat-openbsd httpie neofetch vnstat
         apt install -y screen squid stunnel4 dropbear gnutls-bin 2>/dev/null
@@ -297,6 +297,7 @@ ClientAliveCountMax 2
 
 UseDNS no
 AllowTcpForwarding yes
+VersionAddendum NontikweedScript
 EOFSSH
 
 
@@ -321,6 +322,7 @@ neofetch
 fi
 EOFPROFILE
 
+   sed -i '/password\s*requisite\s*pam_cracklib.s.*/d' /etc/pam.d/common-password && sed -i 's|use_authtok ||g' /etc/pam.d/common-password
 
     chmod +x /etc/profile.d/blaire.sh
 
@@ -1158,6 +1160,15 @@ reset
     # OPENVPN UDP FORWARD
     iptables -A FORWARD -s 10.30.0.0/22 -j ACCEPT
     iptables -A FORWARD -d 10.30.0.0/22 -j ACCEPT
+
+    # FULL TUN INTERNET ACCESS
+
+    iptables -A FORWARD -i tun0 -o "$server_interface" -j ACCEPT
+    iptables -A FORWARD -i "$server_interface" -o tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+    iptables -A FORWARD -i tun1 -o "$server_interface" -j ACCEPT
+    iptables -A FORWARD -i "$server_interface" -o tun1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
 
     # DNS REDIRECT
     iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
