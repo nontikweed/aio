@@ -1452,22 +1452,33 @@ END {
     }
     }
 
-    install_dependencies
-    install_ssh
-    install_dropbear
-    install_squid
-    if [ "$OPENVPN_VERSION" = "1" ]; then
-    install_openvpn1
-    else
-    install_openvpn2
-    fi
-    install_stunnel
-    install_badvpn
-    install_slowdns
-    if [[ "$HYSTERIA_VERSION" == "v2" ]]; then
-        install_hysteria2
-    else
-        install_hysteria
-    fi
-    install_firewall_kvm
-    start_service
+install_dependencies
+install_ssh
+install_dropbear
+install_squid
+case "$OPENVPN_VERSION" in
+    1)
+        echo -e "[\e[32mInfo\e[0m] Installing OpenVPN1..."
+        install_openvpn1
+    ;;
+    
+    2)
+        echo -e "[\e[32mInfo\e[0m] Installing OpenVPN2..."
+        install_openvpn2
+    ;;
+    
+    *)
+        echo -e "[\e[33mNotice\e[0m] No OpenVPN version selected. Defaulting to OpenVPN1..."
+        install_openvpn1
+    ;;
+esac
+install_stunnel
+install_badvpn
+install_slowdns
+if [[ "$HYSTERIA_VERSION" == "v2" ]]; then
+    install_hysteria2
+else
+    install_hysteria
+fi
+install_firewall_kvm
+start_service
