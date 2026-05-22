@@ -977,20 +977,22 @@ echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing OpenVPN Complete." | lolc
 reset
 }
 
-    install_firewall_kvm () {
+   install_firewall_kvm () {
 
     reset
     echo -e "[Info] Installing Iptables." | lolcat
 
-    grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf || echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+    grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf || \
+    echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 
-    grep -q "^net.ipv4.conf.all.rp_filter=0" /etc/sysctl.conf || echo "net.ipv4.conf.all.rp_filter=0" >> /etc/sysctl.conf
+    grep -q "^net.ipv4.conf.all.rp_filter=0" /etc/sysctl.conf || \
+    echo "net.ipv4.conf.all.rp_filter=0" >> /etc/sysctl.conf
 
-    grep -q "^net.ipv4.conf.${server_interface}.rp_filter=0" /etc/sysctl.conf || echo "net.ipv4.conf.${server_interface}.rp_filter=0" >> /etc/sysctl.conf
+    grep -q "^net.ipv4.conf.${server_interface}.rp_filter=0" /etc/sysctl.conf || \
+    echo "net.ipv4.conf.${server_interface}.rp_filter=0" >> /etc/sysctl.conf
 
-    sysctl -p
-
-    sysctl -w net.ipv4.ip_forward=1
+    sysctl -p >/dev/null 2>&1
+    sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
 
     # RESET IPTABLES
     iptables -t nat -F
@@ -1004,35 +1006,45 @@ reset
 
     # UDPGW → HYSTERIA
     iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 20000:50000 -j DNAT --to-destination :5666
+
     iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
 
-    # OPENVPN NAT
-    iptables -t nat -A POSTROUTING -s 172.29.0.0/16 -o "$server_interface" -j MASQUERADE
-    iptables -t nat -A POSTROUTING -s 172.29.16.0/16 -o "$server_interface" -j MASQUERADE
+    # OPENVPN TCP NAT
+    iptables -t nat -A POSTROUTING -s 10.20.0.0/22 -o "$server_interface" -j MASQUERADE
 
-    # OPENVPN FORWARD
-    iptables -A FORWARD -s 172.29.0.0/16 -j ACCEPT
-    iptables -A FORWARD -d 172.29.0.0/16 -j ACCEPT
+    # OPENVPN UDP NAT
+    iptables -t nat -A POSTROUTING -s 10.30.0.0/22 -o "$server_interface" -j MASQUERADE
 
-    iptables -A FORWARD -s 172.29.16.0/16 -j ACCEPT
-    iptables -A FORWARD -d 172.29.16.0/16 -j ACCEPT
+    # OPENVPN TCP FORWARD
+    iptables -A FORWARD -s 10.20.0.0/22 -j ACCEPT
+    iptables -A FORWARD -d 10.20.0.0/22 -j ACCEPT
 
+    # OPENVPN UDP FORWARD
+    iptables -A FORWARD -s 10.30.0.0/22 -j ACCEPT
+    iptables -A FORWARD -d 10.30.0.0/22 -j ACCEPT
+
+    # ESTABLISHED CONNECTIONS
     iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 
     # DNS REDIRECT
     iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
+
     iptables -A INPUT -p udp --dport 5300 -j ACCEPT
 
     # BADVPN
     iptables -t nat -A PREROUTING -d "$server_ip" -p udp --dport 5300 -j REDIRECT --to-ports 2121
+
     iptables -A FORWARD -p udp --dport 2121 -j ACCEPT
 
     # SAVE RULES
+    mkdir -p /etc/iptables
     iptables-save > /etc/iptables/rules.v4
+
     reset
-    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Iptables Complete." | lolcat
+    echo -n -e "[\e[32mInfo\e[0m]"
+    echo -e " Installing Iptables Complete." | lolcat
     reset
-    }
+}
 
 
    install_stunnel() {
