@@ -99,7 +99,7 @@ EOF
         cat <<'EOFDropbear' > /etc/default/dropbear
 NO_START=0
 DROPBEAR_PORT=555
-DROPBEAR_EXTRA_ARGS="-p 550"
+DROPBEAR_EXTRA_ARGS="-p 550 -w"
 DROPBEAR_BANNER="/etc/banner"
 DROPBEAR_RSAKEY="/etc/dropbear/dropbear_rsa_host_key"
 DROPBEAR_DSSKEY="/etc/dropbear/dropbear_dss_host_key"
@@ -115,114 +115,111 @@ EOFDropbear
     }
 
 install_ssh() {
-    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Banner." | lolcat
 
-    {
-        echo -e "[\e[32mInfo\e[0m] Configuring OpenSSH Service"
 
-        if [[ "$(grep -c 'BonvScripts' /etc/ssh/sshd_config 2>/dev/null)" -eq 0 ]]; then
-            cp /etc/ssh/sshd_config /etc/ssh/backup.sshd_config
-        fi
+echo -n -e "[\e[32mInfo\e[0m]"
+echo -e " Installing OpenSSH." | lolcat
 
-        # ScreenFetch
-        cat <<'EOF' > /etc/profile.d/blaire.sh
-#!/bin/bash
-reset
-if command -v screenfetch >/dev/null 2>&1; then
-    screenfetch -p -A Arch
-elif command -v neofetch >/dev/null 2>&1; then
-    neofetch
-fi
-EOF
+{
 
-        chmod +x /etc/profile.d/blaire.sh
+    echo -n -e "[\e[32mInfo\e[0m]"
+    echo -e " Configuring OpenSSH." | lolcat
 
-        # Creating a SSH server config using cat eof tricks
-        cat <<'EOFOpenSSH' > /etc/ssh/sshd_config
+    cp /etc/ssh/sshd_config \
+    /etc/ssh/sshd_config.bak 2>/dev/null
+
+    cat <<'EOFSSH' > /etc/ssh/sshd_config
+
+# OpenSSH Configuration
 Port 22
 Port 225
+Port 2121
+
 ListenAddress 0.0.0.0
+
 Protocol 2
+
 HostKey /etc/ssh/ssh_host_rsa_key
 HostKey /etc/ssh/ssh_host_ecdsa_key
-#HostKey /etc/ssh/ssh_host_ed25519_key
-#KeyRegenerationInterval 3600
-#ServerKeyBits 1024
+
 SyslogFacility AUTH
 LogLevel INFO
+
 PermitRootLogin yes
 StrictModes yes
-#RSAAuthentication yes
+
 PubkeyAuthentication yes
-IgnoreRhosts yes
-#RhostsRSAAuthentication no
-HostbasedAuthentication no
+PasswordAuthentication yes
 PermitEmptyPasswords no
+
 KbdInteractiveAuthentication no
 ChallengeResponseAuthentication no
-PasswordAuthentication yes
+
+UsePAM yes
+
 X11Forwarding yes
 X11DisplayOffset 10
-#GatewayPorts yes
+
 PrintMotd no
 PrintLastLog yes
+
 AcceptEnv LANG LC_*
+
 Subsystem sftp internal-sftp
-UsePAM yes
+
 Banner /etc/banner
+
 TCPKeepAlive yes
 ClientAliveInterval 120
 ClientAliveCountMax 2
+
 UseDNS no
 AllowTcpForwarding yes
-Port 2121
-EOFOpenSSH
+EOFSSH
 
-        # Download our SSH Banner
-        rm -f /etc/banner 2>/dev/null
-        wget -qO /etc/banner "https://raw.githubusercontent.com/nontikweed/blaire69/master/banner" 2>/dev/null || echo "$SCRIPT_NAME" > /etc/banner
-        dos2unix -q /etc/banner >/dev/null 2>&1
 
-        cat <<'EOF' > /usr/local/bin/ssh-auth.sh
+    rm -f /etc/banner 2>/dev/null
+
+    wget -qO /etc/banner \
+    "https://raw.githubusercontent.com/nontikweed/blaire69/master/banner"
+
+    chmod 644 /etc/banner
+
+    cat <<'EOFPROFILE' > /etc/profile.d/blaire.sh
+
+
 #!/bin/bash
 
-password="${PAM_AUTHTOK}"
+clear
 
-response=$(curl --connect-timeout 3 --max-time 5 -s -X POST \
--H "X-API-KEY: xebecc" \
--d "username=$PAM_USER" \
--d "password=$password" \
-https://walanakongmaisip.info/api/auth)
-
-if [[ "$response" == "OK" ]]; then
-    exit 0
-else
-    exit 1
+if command -v screenfetch >/dev/null 2>&1; then
+screenfetch -p -A Arch
+elif command -v neofetch >/dev/null 2>&1; then
+neofetch
 fi
-EOF
+EOFPROFILE
 
-        chmod +x /usr/local/bin/ssh-auth.sh
 
-        cp /etc/pam.d/sshd /etc/pam.d/sshd.bak
+    chmod +x /etc/profile.d/blaire.sh
 
-        grep -q "ssh-auth.sh" /etc/pam.d/sshd || {
-            echo 'auth optional pam_exec.so expose_authtok /usr/local/bin/ssh-auth.sh' | \
-            cat - /etc/pam.d/sshd > /tmp/sshd
-            mv /tmp/sshd /etc/pam.d/sshd
-        }
+    rm -f /usr/local/bin/ssh-auth.sh
 
-        sed -i '/password\s*requisite\s*pam_cracklib.*/d' /etc/pam.d/common-password
-        sed -i 's|use_authtok ||g' /etc/pam.d/common-password
+    sed -i '/ssh-auth.sh/d' /etc/pam.d/sshd
 
-        sshd -t || exit 1
+    sshd -t || exit 1
 
-        systemctl restart "$SSH_SERVICE" 2>/dev/null || \
-        systemctl restart ssh 2>/dev/null
-    }
+    systemctl enable ssh >/dev/null 2>&1
+    systemctl restart ssh
 
-    echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installation Banner Complete." | lolcat
-    reset
-    }
+}
+
+echo -n -e "[\e[32mInfo\e[0m]"
+echo -e " Installation Complete OpenSSH." | lolcat
+
+reset
+
+
+}
 
 install_squid() {
 
@@ -408,8 +405,8 @@ push "rcvbuf 0"
 user nobody
 group nogroup
 
-status /etc/openvpn/server/client.log
-status-version 2
+status /etc/openvpn/server/client.log 5
+status-version 3
 
 log /etc/openvpn/server/udpserver.log
 
@@ -471,8 +468,8 @@ push "rcvbuf 0"
 user nobody
 group nogroup
 
-status /etc/openvpn/server/client.log
-status-version 2
+status /etc/openvpn/server/client.log 5
+status-version 3
 
 log /etc/openvpn/server/tcpserver.log
 
@@ -709,8 +706,8 @@ push "rcvbuf 0"
 user nobody
 group nogroup
 
-status /etc/openvpn/server/client.log
-status-version 2
+status /etc/openvpn/server/client.log 5
+status-version 3
 
 log /etc/openvpn/server/udpserver.log
 
@@ -772,8 +769,8 @@ push "rcvbuf 0"
 user nobody
 group nogroup
 
-status /etc/openvpn/server/client.log
-status-version 2
+     5
+status-version 3
 
 log /etc/openvpn/server/tcpserver.log
 
@@ -977,6 +974,7 @@ echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing OpenVPN Complete." | lolc
 reset
 }
 
+
    install_firewall_kvm () {
 
     reset
@@ -994,6 +992,10 @@ reset
     sysctl -p >/dev/null 2>&1
     sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
 
+    # FORCE IPTABLES LEGACY
+    update-alternatives --set iptables /usr/sbin/iptables-legacy >/dev/null 2>&1
+    update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy >/dev/null 2>&1
+
     # RESET IPTABLES
     iptables -t nat -F
     iptables -F
@@ -1003,6 +1005,17 @@ reset
     iptables -P INPUT ACCEPT
     iptables -P FORWARD ACCEPT
     iptables -P OUTPUT ACCEPT
+
+    # ACCEPT ESTABLISHED
+    iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+    iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+    # TUN INTERFACES
+    iptables -A FORWARD -i tun0 -j ACCEPT
+    iptables -A FORWARD -o tun0 -j ACCEPT
+
+    iptables -A FORWARD -i tun1 -j ACCEPT
+    iptables -A FORWARD -o tun1 -j ACCEPT
 
     # UDPGW → HYSTERIA
     iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 20000:50000 -j DNAT --to-destination :5666
@@ -1023,9 +1036,6 @@ reset
     iptables -A FORWARD -s 10.30.0.0/22 -j ACCEPT
     iptables -A FORWARD -d 10.30.0.0/22 -j ACCEPT
 
-    # ESTABLISHED CONNECTIONS
-    iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
-
     # DNS REDIRECT
     iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
 
@@ -1035,6 +1045,10 @@ reset
     iptables -t nat -A PREROUTING -d "$server_ip" -p udp --dport 5300 -j REDIRECT --to-ports 2121
 
     iptables -A FORWARD -p udp --dport 2121 -j ACCEPT
+
+    # MSS FIX
+    iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
+    -j TCPMSS --clamp-mss-to-pmtu
 
     # SAVE RULES
     mkdir -p /etc/iptables
