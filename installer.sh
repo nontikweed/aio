@@ -213,7 +213,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/root/api
-ExecStart=/usr/bin/php -S 0.0.0.0:8888
+ExecStart=/usr/bin/php -S 0.0.0.0:8888 -t /root/api
 Restart=always
 User=root
 
@@ -326,9 +326,7 @@ EOFPROFILE
 
     chmod +x /etc/profile.d/blaire.sh
 
-    rm -f /usr/local/bin/ssh-auth.sh
-
-    sed -i '/ssh-auth.sh/d' /etc/pam.d/sshd
+    rm -f /usr/local/bin/ssh-auth.sh 2>/dev/null
 
     sshd -t || exit 1
 
