@@ -350,6 +350,10 @@ WantedBy=multi-user.target" > /etc/systemd/system/openvpnws.service
         mkdir -p /etc/openvpn/nontikweed
 
         mkdir -p /etc/openvpn/server
+        rm -rf /etc/openvpn/server/*
+        rm -rf /etc/openvpn/nontikweed/*
+
+
 
         grep -q "DNSStubListener=no" /etc/systemd/resolved.conf || cat <<'EOF' >> /etc/systemd/resolved.conf
     DNS=1.1.1.1
@@ -399,6 +403,9 @@ WantedBy=multi-user.target" > /etc/systemd/system/openvpnws.service
         verb 3' > /etc/openvpn/server/server_udp.conf
 
         sed -i "s|PORT_TCP|$PORT_TCP|g" /etc/openvpn/server/server_tcp.conf
+        sed -i "s|PORT_UDP|$PORT_UDP|g" /etc/openvpn/server/server_udp.conf
+
+
 
         echo 'port PORT_TCP
         dev tun
