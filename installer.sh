@@ -104,11 +104,9 @@ echo -e " Installing Dropbear." | lolcat
     echo -e " Configuring Dropbear." | lolcat
 
     cat <<'EOFDropbear' > /etc/default/dropbear
-
-
 NO_START=0
 DROPBEAR_PORT=555
-DROPBEAR_EXTRA_ARGS="-p 550 -w"
+DROPBEAR_EXTRA_ARGS="-p 550"
 DROPBEAR_BANNER="/etc/banner"
 DROPBEAR_RSAKEY="/etc/dropbear/dropbear_rsa_host_key"
 DROPBEAR_DSSKEY="/etc/dropbear/dropbear_dss_host_key"
@@ -116,10 +114,8 @@ DROPBEAR_ECDSAKEY="/etc/dropbear/dropbear_ecdsa_host_key"
 DROPBEAR_RECEIVE_WINDOW=65536
 EOFDropbear
 
-
     systemctl enable dropbear >/dev/null 2>&1
     systemctl restart dropbear
-
 }
 
 echo -n -e "[\e[32mInfo\e[0m]"
@@ -127,12 +123,9 @@ echo -e " Installation Complete Dropbear." | lolcat
 
 reset
 
-
 }
 
 install_user_api() {
-
-
 echo -n -e "[\e[32mInfo\e[0m]"
 echo -e " Installing User API." | lolcat
 
@@ -322,7 +315,11 @@ neofetch
 fi
 EOFPROFILE
 
-   sed -i '/password\s*requisite\s*pam_cracklib.s.*/d' /etc/pam.d/common-password && sed -i 's|use_authtok ||g' /etc/pam.d/common-password
+   sed -i 's/^password.*pam_script.so/#&/g' /etc/pam.d/common-password
+
+    sed -i 's/ obscure//g' /etc/pam.d/common-password
+
+    sed -i 's/use_authtok //g' /etc/pam.d/common-password
 
     chmod +x /etc/profile.d/blaire.sh
 
