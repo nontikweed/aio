@@ -1104,101 +1104,103 @@ reset
 
    install_firewall_kvm () {
 
-    reset
-    echo -e "[Info] Installing Iptables." | lolcat
 
-    grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf || \
-    echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+reset
+echo -e "[Info] Installing Iptables." | lolcat
 
-    grep -q "^net.ipv4.conf.all.rp_filter=0" /etc/sysctl.conf || \
-    echo "net.ipv4.conf.all.rp_filter=0" >> /etc/sysctl.conf
+grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf || \
+echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 
-    grep -q "^net.ipv4.conf.${server_interface}.rp_filter=0" /etc/sysctl.conf || \
-    echo "net.ipv4.conf.${server_interface}.rp_filter=0" >> /etc/sysctl.conf
+grep -q "^net.ipv4.conf.all.rp_filter=0" /etc/sysctl.conf || \
+echo "net.ipv4.conf.all.rp_filter=0" >> /etc/sysctl.conf
 
-    sysctl -p >/dev/null 2>&1
-    sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
+grep -q "^net.ipv4.conf.${server_interface}.rp_filter=0" /etc/sysctl.conf || \
+echo "net.ipv4.conf.${server_interface}.rp_filter=0" >> /etc/sysctl.conf
 
-    # FORCE IPTABLES LEGACY
-    update-alternatives --set iptables /usr/sbin/iptables-legacy >/dev/null 2>&1
-    update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy >/dev/null 2>&1
+sysctl -p >/dev/null 2>&1
+sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
 
-    # RESET IPTABLES
-    iptables -t nat -F
-    iptables -F
-    iptables -X
+# FORCE IPTABLES LEGACY
+update-alternatives --set iptables /usr/sbin/iptables-legacy >/dev/null 2>&1
+update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy >/dev/null 2>&1
 
-    # DEFAULT POLICIES
-    iptables -P INPUT ACCEPT
-    iptables -P FORWARD ACCEPT
-    iptables -P OUTPUT ACCEPT
+# RESET IPTABLES
+iptables -t nat -F
+iptables -F
+iptables -X
 
-    # ACCEPT ESTABLISHED
-    iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
-    iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+# DEFAULT POLICIES
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
 
-    # TUN INTERFACES
-    iptables -A FORWARD -i tun0 -j ACCEPT
-    iptables -A FORWARD -o tun0 -j ACCEPT
+# ACCEPT ESTABLISHED
+iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 
-    iptables -A FORWARD -i tun1 -j ACCEPT
-    iptables -A FORWARD -o tun1 -j ACCEPT
+# TUN INTERFACES
+iptables -A FORWARD -i tun0 -j ACCEPT
+iptables -A FORWARD -o tun0 -j ACCEPT
 
-    # UDPGW → HYSTERIA
-    iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 20000:50000 -j DNAT --to-destination :5666
+iptables -A FORWARD -i tun1 -j ACCEPT
+iptables -A FORWARD -o tun1 -j ACCEPT
 
-    iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
+# UDPGW → HYSTERIA
+iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 20000:50000 -j DNAT --to-destination :5666
 
-    # OPENVPN TCP NAT
-    iptables -t nat -A POSTROUTING -s 10.20.0.0/22 -o "$server_interface" -j MASQUERADE
+iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
 
-    # OPENVPN UDP NAT
-    iptables -t nat -A POSTROUTING -s 10.30.0.0/22 -o "$server_interface" -j MASQUERADE
+# OPENVPN TCP NAT
+iptables -t nat -A POSTROUTING -s 10.20.0.0/22 -o "$server_interface" -j MASQUERADE
 
-    # OPENVPN TCP FORWARD
-    iptables -A FORWARD -s 10.20.0.0/22 -j ACCEPT
-    iptables -A FORWARD -d 10.20.0.0/22 -j ACCEPT
+# OPENVPN UDP NAT
+iptables -t nat -A POSTROUTING -s 10.30.0.0/22 -o "$server_interface" -j MASQUERADE
 
-    # OPENVPN UDP FORWARD
-    iptables -A FORWARD -s 10.30.0.0/22 -j ACCEPT
-    iptables -A FORWARD -d 10.30.0.0/22 -j ACCEPT
+# GLOBAL MASQUERADE
+iptables -t nat -A POSTROUTING -o "$server_interface" -j MASQUERADE
 
-    iptables -t nat -A POSTROUTING -o "$server_interface" -j MASQUERADE
-    iptables -A FORWARD -i "$server_interface" -j ACCEPT
-    iptables -A FORWARD -o "$server_interface" -j ACCEPT
+# OPENVPN TCP FORWARD
+iptables -A FORWARD -s 10.20.0.0/22 -j ACCEPT
+iptables -A FORWARD -d 10.20.0.0/22 -j ACCEPT
 
-    # FULL TUN INTERNET ACCESS
+# OPENVPN UDP FORWARD
+iptables -A FORWARD -s 10.30.0.0/22 -j ACCEPT
+iptables -A FORWARD -d 10.30.0.0/22 -j ACCEPT
 
-    iptables -A FORWARD -i tun0 -o "$server_interface" -j ACCEPT
-    iptables -A FORWARD -i "$server_interface" -o tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+# FULL FORWARD
+iptables -A FORWARD -i "$server_interface" -j ACCEPT
+iptables -A FORWARD -o "$server_interface" -j ACCEPT
 
-    iptables -A FORWARD -i tun1 -o "$server_interface" -j ACCEPT
-    iptables -A FORWARD -i "$server_interface" -o tun1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+# FULL TUN INTERNET ACCESS
+iptables -A FORWARD -i tun0 -o "$server_interface" -j ACCEPT
+iptables -A FORWARD -i "$server_interface" -o tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+iptables -A FORWARD -i tun1 -o "$server_interface" -j ACCEPT
+iptables -A FORWARD -i "$server_interface" -o tun1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# DNS REDIRECT
+iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
+
+iptables -A INPUT -p udp --dport 5300 -j ACCEPT
+
+iptables -A INPUT -p udp --dport 7300 -j ACCEPT
+
+# MSS FIX
+iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
+-j TCPMSS --clamp-mss-to-pmtu
+
+# SAVE RULES
+mkdir -p /etc/iptables
+iptables-save > /etc/iptables/rules.v4
+
+reset
+echo -n -e "[\e[32mInfo\e[0m]"
+echo -e " Installing Iptables Complete." | lolcat
+reset
 
 
-    # DNS REDIRECT
-    iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
-
-    iptables -A INPUT -p udp --dport 5300 -j ACCEPT
-
-    # BADVPN
-    iptables -t nat -A PREROUTING -d "$server_ip" -p udp --dport 5300 -j REDIRECT --to-ports 2121
-
-    iptables -A FORWARD -p udp --dport 2121 -j ACCEPT
-
-    # MSS FIX
-    iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
-    -j TCPMSS --clamp-mss-to-pmtu
-
-    # SAVE RULES
-    mkdir -p /etc/iptables
-    iptables-save > /etc/iptables/rules.v4
-
-    reset
-    echo -n -e "[\e[32mInfo\e[0m]"
-    echo -e " Installing Iptables Complete." | lolcat
-    reset
 }
+
 
 
    install_stunnel() {
@@ -1350,7 +1352,7 @@ EOFStunnel3
     CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
     AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
     NoNewPrivileges=true
-    ExecStart=/etc/slowdns/slowdns -udp :5300 -privkey-file /etc/slowdns/server.key $NSNAME 127.0.0.1:2121
+    ExecStart=/etc/slowdns/slowdns -udp :5300 -privkey-file /etc/slowdns/server.key $NSNAME 127.0.0.1:7300
     Restart=on-failure
 
     [Install]
@@ -1459,6 +1461,7 @@ EOF
     echo -e " Restarting Hysteria Server." | lolcat
 
     systemctl restart hysteria-server.service >/dev/null 2>&1
+    systemctl status hysteria-server.service
 
     sleep 2
 
