@@ -130,15 +130,22 @@ reset
 
 install_user_api() {
 
+reset
 
 echo -n -e "[\e[32mInfo\e[0m]"
 echo -e " Installing User API." | lolcat
 
 {
 
-    mkdir -p /root/api
 
-    cat <<'EOFAPI' > /root/api/create-user.php
+apt update -y >/dev/null 2>&1
+apt install php-cli -y >/dev/null 2>&1
+
+mkdir -p /root/api
+
+cat <<'EOFAPI' > /root/api/create-user.php
+
+
 <?php
 
 header('Content-Type: application/json');
@@ -178,7 +185,6 @@ if (
 }
 
 $usernameSafe = escapeshellarg($username);
-
 $passwordSafe = escapeshellarg($password);
 
 shell_exec("
@@ -198,12 +204,32 @@ echo json_encode([
 
     'status' => true,
 
-    'message' => 'User created'
+    'message' => 'User synced'
 
 ]);
 EOFAPI
 
-        cat <<'EOFSERVICE' > /etc/systemd/system/userapi.service
+    cat <<'EOFSTATUS' > /root/api/status.php
+<?php
+
+header('Content-Type: application/json');
+
+echo json_encode([
+
+    'status' => true,
+
+    'hostname' => gethostname(),
+
+    'uptime' => trim(shell_exec("uptime -p")),
+
+    'load' => sys_getloadavg(),
+
+    'time' => date('Y-m-d H:i:s'),
+
+]);
+EOFSTATUS
+
+    cat <<'EOFSERVICE' > /etc/systemd/system/userapi.service
 [Unit]
 Description=User API Service
 After=network.target
@@ -219,17 +245,20 @@ User=root
 WantedBy=multi-user.target
 EOFSERVICE
 
-        systemctl daemon-reload
+    systemctl daemon-reload
 
-        systemctl enable userapi >/dev/null 2>&1
+    systemctl enable userapi >/dev/null 2>&1
+    systemctl restart userapi
 
-        systemctl restart userapi
-
-    }
-
-    echo -n -e "[\e[32mInfo\e[0m]"
-    echo -e " Installation Complete User API." | lolcat
 }
+
+echo -n -e "[\e[32mInfo\e[0m]"
+echo -e " Installation Complete User API." | lolcat
+
+reset
+
+}
+
 
 
 install_ssh() {
