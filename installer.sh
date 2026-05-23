@@ -114,8 +114,10 @@ DROPBEAR_ECDSAKEY="/etc/dropbear/dropbear_ecdsa_host_key"
 DROPBEAR_RECEIVE_WINDOW=65536
 EOFDropbear
 
+
     systemctl enable dropbear >/dev/null 2>&1
     systemctl restart dropbear
+
 }
 
 echo -n -e "[\e[32mInfo\e[0m]"
@@ -123,9 +125,12 @@ echo -e " Installation Complete Dropbear." | lolcat
 
 reset
 
+
 }
 
 install_user_api() {
+
+
 echo -n -e "[\e[32mInfo\e[0m]"
 echo -e " Installing User API." | lolcat
 
@@ -315,6 +320,8 @@ neofetch
 fi
 EOFPROFILE
 
+   sed -i '/password\s*requisite\s*pam_cracklib.s.*/d' /etc/pam.d/common-password
+  
    sed -i 's/^password.*pam_script.so/#&/g' /etc/pam.d/common-password
 
     sed -i 's/ obscure//g' /etc/pam.d/common-password
