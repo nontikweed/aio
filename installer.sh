@@ -388,8 +388,6 @@ echo -e "[\e[32mInfo\e[0m] Installing SquidProxy."
 
     echo -e "[\e[32mInfo\e[0m] Configuring Squid.."
 
-    apt install squid -y >/dev/null 2>&1
-
     if [ -f /etc/squid/squid.conf ] && \
     [ ! -f /etc/squid/squid.conf.bak.popotworks ]; then
 
@@ -404,32 +402,15 @@ echo -e "[\e[32mInfo\e[0m] Installing SquidProxy."
 cat <<EOF >/etc/squid/squid.conf
 acl VPN dst $(wget -4qO- http://ipinfo.io/ip)/32
 
-acl SSL_ports port 443
-acl SSL_ports port 1194
-acl SSL_ports port 8080
-acl SSL_ports port 8000
-
-acl Safe_ports port 80
-acl Safe_ports port 443
-acl Safe_ports port 1194
-acl Safe_ports port 8080
-acl Safe_ports port 8000
-
 acl CONNECT method CONNECT
 
 http_access allow VPN
 http_access allow CONNECT VPN
 
-http_access deny !Safe_ports
-http_access deny CONNECT !SSL_ports
-
 http_access deny all
 
 http_port 0.0.0.0:8080
 http_port 0.0.0.0:8000
-
-acl kweed src all
-no_cache deny kweed
 
 dns_nameservers 1.1.1.1 1.0.0.1
 
@@ -593,7 +574,7 @@ push "rcvbuf 0"
 user nobody
 group nogroup
 
-status /etc/openvpn/server/client.log 5
+status /etc/openvpn/server/client.log
 status-version 3
 
 log /etc/openvpn/server/udpserver.log
@@ -656,7 +637,7 @@ push "rcvbuf 0"
 user nobody
 group nogroup
 
-status /etc/openvpn/server/client.log 5
+status /etc/openvpn/server/client.log
 status-version 3
 
 log /etc/openvpn/server/tcpserver.log
@@ -842,7 +823,6 @@ EOF
 
 
 echo '# OpenVPN UDP Configuration
-
 port 110
 proto udp
 
@@ -894,7 +874,7 @@ push "rcvbuf 0"
 user nobody
 group nogroup
 
-status /etc/openvpn/server/client.log 5
+status /etc/openvpn/server/client.log
 status-version 3
 
 log /etc/openvpn/server/udpserver.log
@@ -957,9 +937,8 @@ push "rcvbuf 0"
 user nobody
 group nogroup
 
-     5
 status-version 3
-
+status /etc/openvpn/server/client.log
 log /etc/openvpn/server/tcpserver.log
 
 ifconfig-pool-persist /etc/openvpn/server/tcpip.txt
@@ -1163,8 +1142,7 @@ reset
 }
 
 
-   install_firewall_kvm () {
-
+install_firewall_kvm () {
 
 reset
 echo -e "[Info] Installing Iptables." | lolcat
@@ -1189,6 +1167,7 @@ update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy >/dev/null 2>&1
 iptables -t nat -F
 iptables -F
 iptables -X
+iptables -t mangle -F
 
 # DEFAULT POLICIES
 iptables -P INPUT ACCEPT
@@ -1199,26 +1178,11 @@ iptables -P OUTPUT ACCEPT
 iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 
-# TUN INTERFACES
-iptables -A FORWARD -i tun0 -j ACCEPT
-iptables -A FORWARD -o tun0 -j ACCEPT
-
-iptables -A FORWARD -i tun1 -j ACCEPT
-iptables -A FORWARD -o tun1 -j ACCEPT
-
-# UDPGW → HYSTERIA
-iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 20000:50000 -j DNAT --to-destination :5666
-
-iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
-
 # OPENVPN TCP NAT
 iptables -t nat -A POSTROUTING -s 10.20.0.0/22 -o "$server_interface" -j MASQUERADE
 
 # OPENVPN UDP NAT
 iptables -t nat -A POSTROUTING -s 10.30.0.0/22 -o "$server_interface" -j MASQUERADE
-
-# GLOBAL MASQUERADE
-iptables -t nat -A POSTROUTING -o "$server_interface" -j MASQUERADE
 
 # OPENVPN TCP FORWARD
 iptables -A FORWARD -s 10.20.0.0/22 -j ACCEPT
@@ -1228,21 +1192,31 @@ iptables -A FORWARD -d 10.20.0.0/22 -j ACCEPT
 iptables -A FORWARD -s 10.30.0.0/22 -j ACCEPT
 iptables -A FORWARD -d 10.30.0.0/22 -j ACCEPT
 
-# FULL FORWARD
-iptables -A FORWARD -i "$server_interface" -j ACCEPT
-iptables -A FORWARD -o "$server_interface" -j ACCEPT
-
-# FULL TUN INTERNET ACCESS
+# TUN INTERNET ACCESS
 iptables -A FORWARD -i tun0 -o "$server_interface" -j ACCEPT
 iptables -A FORWARD -i "$server_interface" -o tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 iptables -A FORWARD -i tun1 -o "$server_interface" -j ACCEPT
 iptables -A FORWARD -i "$server_interface" -o tun1 -m state --state RELATED,ESTABLISHED -j ACCEPT
 
-# DNS REDIRECT
+# UDPGW → HYSTERIA
+iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 20000:50000 -j REDIRECT --to-ports 5666
+
+iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 6000:19999 -j REDIRECT --to-ports 5667
+
+# HYSTERIA PORTS
+iptables -A INPUT -p udp --dport 5666 -j ACCEPT
+iptables -A INPUT -p tcp --dport 5666 -j ACCEPT
+
+iptables -A INPUT -p udp --dport 5667 -j ACCEPT
+iptables -A INPUT -p tcp --dport 5667 -j ACCEPT
+
+# DNS REDIRECT FOR SLOWDNS
 iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
 
 iptables -A INPUT -p udp --dport 5300 -j ACCEPT
+
+# BADVPN
 iptables -A INPUT -p tcp --dport 7300 -j ACCEPT
 iptables -A INPUT -p udp --dport 7300 -j ACCEPT
 
@@ -1253,12 +1227,12 @@ iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
 # SAVE RULES
 mkdir -p /etc/iptables
 iptables-save > /etc/iptables/rules.v4
+systemctl enable netfilter-persistent >/dev/null 2>&1
 
 reset
 echo -n -e "[\e[32mInfo\e[0m]"
 echo -e " Installing Iptables Complete." | lolcat
 reset
-
 
 }
 
