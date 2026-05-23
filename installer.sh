@@ -1163,6 +1163,10 @@ reset
     iptables -A FORWARD -s 10.30.0.0/22 -j ACCEPT
     iptables -A FORWARD -d 10.30.0.0/22 -j ACCEPT
 
+    iptables -t nat -A POSTROUTING -o "$server_interface" -j MASQUERADE
+    iptables -A FORWARD -i "$server_interface" -j ACCEPT
+    iptables -A FORWARD -o "$server_interface" -j ACCEPT
+
     # FULL TUN INTERNET ACCESS
 
     iptables -A FORWARD -i tun0 -o "$server_interface" -j ACCEPT
