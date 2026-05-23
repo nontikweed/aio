@@ -1183,6 +1183,7 @@ iptables -t nat -A POSTROUTING -s 10.20.0.0/22 -o "$server_interface" -j MASQUER
 
 # OPENVPN UDP NAT
 iptables -t nat -A POSTROUTING -s 10.30.0.0/22 -o "$server_interface" -j MASQUERADE
+iptables -t nat -A POSTROUTING -o "$server_interface" -j MASQUERADE
 
 # OPENVPN TCP FORWARD
 iptables -A FORWARD -s 10.20.0.0/22 -j ACCEPT
@@ -1209,7 +1210,6 @@ iptables -A INPUT -p udp --dport 5666 -j ACCEPT
 iptables -A INPUT -p tcp --dport 5666 -j ACCEPT
 
 iptables -A INPUT -p udp --dport 5667 -j ACCEPT
-iptables -A INPUT -p tcp --dport 5667 -j ACCEPT
 
 # DNS REDIRECT FOR SLOWDNS
 iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
