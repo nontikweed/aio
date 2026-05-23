@@ -379,67 +379,95 @@ reset
 
 install_squid() {
 
-    reset
 
-    echo -e "[\e[32mInfo\e[0m] Installing SquidProxy."
+reset
 
-    {
+echo -e "[\e[32mInfo\e[0m] Installing SquidProxy."
 
-        echo -e "[\e[32mInfo\e[0m] Configuring Squid.."
+{
 
-        if [ -f /etc/squid/squid.conf ] && \
-        [ ! -f /etc/squid/squid.conf.bak.popotworks ]; then
+    echo -e "[\e[32mInfo\e[0m] Configuring Squid.."
 
-            cp /etc/squid/squid.conf \
-            /etc/squid/squid.conf.bak.popotworks
+    apt install squid -y >/dev/null 2>&1
 
-        fi
+    if [ -f /etc/squid/squid.conf ] && \
+    [ ! -f /etc/squid/squid.conf.bak.popotworks ]; then
 
-        rm -rf /etc/squid/sq*
+        cp /etc/squid/squid.conf \
+        /etc/squid/squid.conf.bak.popotworks
 
-cat <<mySquid >/etc/squid/squid.conf
+    fi
+
+    rm -rf /etc/squid/sq*
+
+
+cat <<EOF >/etc/squid/squid.conf
 acl VPN dst $(wget -4qO- http://ipinfo.io/ip)/32
+
+acl SSL_ports port 443
+acl SSL_ports port 1194
+acl SSL_ports port 8080
+acl SSL_ports port 8000
+
+acl Safe_ports port 80
+acl Safe_ports port 443
+acl Safe_ports port 1194
+acl Safe_ports port 8080
+acl Safe_ports port 8000
+
+acl CONNECT method CONNECT
+
 http_access allow VPN
+http_access allow CONNECT VPN
+
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+
 http_access deny all
 
 http_port 0.0.0.0:8080
 http_port 0.0.0.0:8000
 
-acl kweed src 0.0.0.0/0.0.0.0
+acl kweed src all
 no_cache deny kweed
 
 dns_nameservers 1.1.1.1 1.0.0.1
 
 visible_hostname localhost
-mySquid
+EOF
 
-        echo -e "[\e[33mNotice\e[0m] Restarting Squid Service.."
 
-        systemctl restart squid
+    squid -k parse || exit 1
 
-        cd /etc || exit
+    echo -e "[\e[33mNotice\e[0m] Restarting Squid Service.."
 
-        wget -q -O /usr/sbin/sshws \
-        "https://raw.githubusercontent.com/nontikweed/aio/main/socks.py"
+    systemctl enable squid >/dev/null 2>&1
+    systemctl restart squid
 
-        wget -q -O /usr/sbin/openvpnws \
-        "https://raw.githubusercontent.com/nontikweed/aio/main/openvpnws"
+    cd /etc || exit
 
-        dos2unix /usr/sbin/sshws >/dev/null 2>&1
-        dos2unix /usr/sbin/openvpnws >/dev/null 2>&1
+    wget -q -O /usr/sbin/sshws \
+    "https://raw.githubusercontent.com/nontikweed/aio/main/socks.py"
 
-        chmod +x /usr/sbin/sshws >/dev/null 2>&1
-        chmod +x /usr/sbin/openvpnws >/dev/null 2>&1
+    wget -q -O /usr/sbin/openvpnws \
+    "https://raw.githubusercontent.com/nontikweed/aio/main/openvpnws"
 
-        sed -i '1s|#!/usr/bin/python|#!/usr/bin/python3|' /usr/sbin/sshws
-        sed -i '1s|#!/usr/bin/python|#!/usr/bin/python3|' /usr/sbin/openvpnws
+    dos2unix /usr/sbin/sshws >/dev/null 2>&1
+    dos2unix /usr/sbin/openvpnws >/dev/null 2>&1
 
-        2to3 -w /usr/sbin/sshws >/dev/null 2>&1
-        2to3 -w /usr/sbin/openvpnws >/dev/null 2>&1
+    chmod +x /usr/sbin/sshws >/dev/null 2>&1
+    chmod +x /usr/sbin/openvpnws >/dev/null 2>&1
 
-echo "[Unit]
+    sed -i '1s|#!/usr/bin/python|#!/usr/bin/python3|' /usr/sbin/sshws
+    sed -i '1s|#!/usr/bin/python|#!/usr/bin/python3|' /usr/sbin/openvpnws
+
+    2to3 -w /usr/sbin/sshws >/dev/null 2>&1
+    2to3 -w /usr/sbin/openvpnws >/dev/null 2>&1
+
+
+cat <<EOF >/etc/systemd/system/sshws.service
+[Unit]
 Description=SSH Websocket
-Documentation=https://google.com
 After=network.target nss-lookup.target
 
 [Service]
@@ -450,11 +478,12 @@ Restart=always
 RestartSec=3
 
 [Install]
-WantedBy=multi-user.target" > /etc/systemd/system/sshws.service
+WantedBy=multi-user.target
+EOF
 
-echo "[Unit]
+cat <<EOF >/etc/systemd/system/openvpnws.service
+[Unit]
 Description=OVPN Websocket
-Documentation=https://google.com
 After=network.target nss-lookup.target
 
 [Service]
@@ -465,27 +494,30 @@ Restart=always
 RestartSec=3
 
 [Install]
-WantedBy=multi-user.target" > /etc/systemd/system/openvpnws.service
+WantedBy=multi-user.target
+EOF
 
-        echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
 
-        systemctl daemon-reload >/dev/null 2>&1
+    echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
 
-        echo -e "[\e[33mNotice\e[0m] Enabling Websocket Services."
+    systemctl daemon-reload >/dev/null 2>&1
 
-        systemctl enable sshws >/dev/null 2>&1
-        systemctl enable openvpnws >/dev/null 2>&1
+    echo -e "[\e[33mNotice\e[0m] Enabling Websocket Services."
 
-        echo -e "[\e[33mNotice\e[0m] Restarting Websocket Services."
+    systemctl enable sshws >/dev/null 2>&1
+    systemctl enable openvpnws >/dev/null 2>&1
 
-        systemctl restart sshws >/dev/null 2>&1
-        systemctl restart openvpnws >/dev/null 2>&1
+    echo -e "[\e[33mNotice\e[0m] Restarting Websocket Services."
 
-    }
+    systemctl restart sshws >/dev/null 2>&1
+    systemctl restart openvpnws >/dev/null 2>&1
 
-    echo -e "[\e[32mInfo\e[0m] Installation SquidProxy Complete."
+}
 
-    sleep 5
+echo -e "[\e[32mInfo\e[0m] Installation SquidProxy Complete."
+
+sleep 5
+
 }
 
     install_openvpn2()
@@ -1211,7 +1243,7 @@ iptables -A FORWARD -i "$server_interface" -o tun1 -m state --state RELATED,ESTA
 iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 53 -j REDIRECT --to-ports 5300
 
 iptables -A INPUT -p udp --dport 5300 -j ACCEPT
-
+iptables -A INPUT -p tcp --dport 7300 -j ACCEPT
 iptables -A INPUT -p udp --dport 7300 -j ACCEPT
 
 # MSS FIX
