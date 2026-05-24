@@ -63,7 +63,7 @@ EOF
         export DEBIAN_FRONTEND=noninteractive 
         rm -rf /var/lib/dpkg/lock /var/{lib/apt/lists/lock,cache/apt/archives/lock}
         apt-get update
-        apt install -y dos2unix dnsutils nginx php-cli 2>/dev/null
+        apt install -y dos2unix socat qrencode  dnsutils nginx php-cli 2>/dev/null
         apt install -y sudo openvpn openssl libpam-script
         apt install -y netcat-openbsd httpie neofetch vnstat
         apt install -y screen squid stunnel4 dropbear gnutls-bin 2>/dev/null
@@ -136,10 +136,6 @@ echo -n -e "[\e[32mInfo\e[0m]"
 echo -e " Installing User API." | lolcat
 
 {
-
-
-apt update -y >/dev/null 2>&1
-apt install php-cli -y >/dev/null 2>&1
 
 mkdir -p /root/api
 
@@ -1207,7 +1203,6 @@ iptables -t nat -A PREROUTING -i "$server_interface" -p udp --dport 6000:19999 -
 
 # HYSTERIA PORTS
 iptables -A INPUT -p udp --dport 5666 -j ACCEPT
-iptables -A INPUT -p tcp --dport 5666 -j ACCEPT
 
 iptables -A INPUT -p udp --dport 5667 -j ACCEPT
 
@@ -1220,6 +1215,9 @@ iptables -A INPUT -p udp --dport 5300 -j ACCEPT
 iptables -A INPUT -p tcp --dport 7300 -j ACCEPT
 iptables -A INPUT -p udp --dport 7300 -j ACCEPT
 
+# XRAY VLESS
+iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+
 # MSS FIX
 iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
 -j TCPMSS --clamp-mss-to-pmtu
@@ -1227,6 +1225,7 @@ iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
 # SAVE RULES
 mkdir -p /etc/iptables
 iptables-save > /etc/iptables/rules.v4
+netfilter-persistent save >/dev/null 2>&1
 systemctl enable netfilter-persistent >/dev/null 2>&1
 
 reset
@@ -1235,8 +1234,6 @@ echo -e " Installing Iptables Complete." | lolcat
 reset
 
 }
-
-
 
    install_stunnel() {
     echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing Stunnel." | lolcat
@@ -1413,6 +1410,179 @@ EOFStunnel3
         echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing SlowDNS Complete." | lolcat
         reset
     }
+
+    install_xray_vless_ws() {
+
+reset
+echo -e "[\e[32mInfo\e[0m] Installing Xray VLESS WS." | lolcat
+
+bash <(curl -Ls https://raw.githubusercontent.com/XTLS/Xray-install/main/install-release.sh) install
+
+mkdir -p /usr/local/etc/xray
+mkdir -p /root/api
+
+cat <<EOF >/usr/local/etc/xray/config.json
+{
+  "log": {
+    "loglevel": "warning"
+  },
+
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vless",
+
+      "settings": {
+        "decryption": "none",
+        "clients": []
+      },
+
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+
+        "wsSettings": {
+          "path": "/vless"
+        }
+      }
+    }
+  ],
+
+  "outbounds": [
+    {
+      "protocol": "freedom"
+    }
+  ]
+}
+EOF
+
+# CREATE USER API
+cat <<'EOF' >/root/api/create-vless.php
+<?php
+
+header('Content-Type: application/json');
+
+$apiKey = $_POST['api_key'] ?? '';
+
+if ($apiKey !== 'xebecc') {
+    exit(json_encode([
+        'status' => false
+    ]));
+}
+
+$username = $_POST['username'] ?? '';
+
+if (!$username) {
+    exit(json_encode([
+        'status' => false
+    ]));
+}
+
+$uuid = trim(shell_exec('cat /proc/sys/kernel/random/uuid'));
+
+$config = json_decode(
+    file_get_contents('/usr/local/etc/xray/config.json'),
+    true
+);
+
+$config['inbounds'][0]['settings']['clients'][] = [
+    "id" => $uuid,
+    "email" => $username
+];
+
+file_put_contents(
+    '/usr/local/etc/xray/config.json',
+    json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+);
+
+shell_exec('systemctl restart xray');
+
+$ip = trim(shell_exec('wget -4qO- http://ipinfo.io/ip'));
+
+$link = "vless://{$uuid}@{$ip}:443?type=ws&security=none&path=%2Fvless#{$username}";
+
+echo json_encode([
+    'status' => true,
+    'uuid' => $uuid,
+    'link' => $link
+]);
+EOF
+
+# DELETE API
+cat <<'EOF' >/root/api/delete-vless.php
+<?php
+
+header('Content-Type: application/json');
+
+$apiKey = $_POST['api_key'] ?? '';
+$username = $_POST['username'] ?? '';
+
+if ($apiKey !== 'xebecc') {
+    exit(json_encode([
+        'status' => false
+    ]));
+}
+
+$config = json_decode(
+    file_get_contents('/usr/local/etc/xray/config.json'),
+    true
+);
+
+$clients = $config['inbounds'][0]['settings']['clients'];
+
+$new = [];
+
+foreach ($clients as $client) {
+
+    if ($client['email'] !== $username) {
+        $new[] = $client;
+    }
+}
+
+$config['inbounds'][0]['settings']['clients'] = $new;
+
+file_put_contents(
+    '/usr/local/etc/xray/config.json',
+    json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+);
+
+shell_exec('systemctl restart xray');
+
+echo json_encode([
+    'status' => true
+]);
+EOF
+
+# STATUS API
+cat <<'EOF' >/root/api/xray-status.php
+<?php
+
+header('Content-Type: application/json');
+
+$status = trim(shell_exec('systemctl is-active xray'));
+
+echo json_encode([
+    'online' => $status === 'active'
+]);
+EOF
+
+chmod -R 755 /root/api
+
+systemctl enable xray >/dev/null 2>&1
+systemctl restart xray
+
+reset
+echo -e "\e[32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "        XRAY VLESS WS"
+echo -e "\e[32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "Port    : 443"
+echo -e "Path    : /vless"
+echo -e "Protocol: VLESS WS"
+echo -e "Security: none"
+echo -e "\e[32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+
+}
 
 install_hysteria() {
 
@@ -1695,6 +1865,7 @@ install_ssh
 install_dropbear
 install_user_api
 install_squid
+install_xray_vless_ws
 case "$OPENVPN_VERSION" in
     1)
         echo -e "[\e[32mInfo\e[0m] Installing OpenVPN1..."
