@@ -1357,59 +1357,98 @@ EOFStunnel3
     }
 
     install_slowdns() {
-        reset
-        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing SlowDNS." | lolcat
-        {  
 
-            echo -e "[\e[32mInfo\e[0m] Creating SlowDNS directory."
-            mkdir -p -m 755 /etc/slowdns
-            cd /etc/slowdns
-            curl -s -o dns.sh "https://raw.githubusercontent.com/nontikweed/aio/main/autodns" && chmod +x dns.sh && ./dns.sh  
-            echo -e "[\e[32mInfo\e[0m] Downloading SlowDNS Files."
-            wget -O /etc/slowdns/slowdns https://raw.githubusercontent.com/nontikweed/aio/main/slowdns > /dev/null 2>&1
-            echo '39a475f6c980d39007ae00e1c8f922b5eb1bd88b33071919a735cdafb5ab2389' >> server.key
-            echo '15f2caeefeb017bab2ca8f5c72e3d3719333f3f56a8ca2078480109772f6406c' >> server.pub
-            sudo chmod +x /etc/slowdns/slowdns
+    reset
 
-            NSNAME="$(cat /etc/slowdns/ns.txt)"
-            echo "Configuring SlowDNS service..."
-            echo "[Unit]
-    Description=Server SlowDNS By Nontikweed
-    Documentation=https://nethubvpn.net
-    After=network.target nss-lookup.target
+    echo -n -e "[\e[32mInfo\e[0m]"
 
-    [Service]
-    Type=simple
-    User=root
-    CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-    NoNewPrivileges=true
-    ExecStart=/etc/slowdns/slowdns -udp :5300 -privkey-file /etc/slowdns/server.key $NSNAME 127.0.0.1:7300
-    Restart=on-failure
+    echo -e " Installing SlowDNS." | lolcat
 
-    [Install]
-    WantedBy=multi-user.target" > /etc/systemd/system/slowdns.service
+    {
 
-            echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
-            systemctl daemon-reload > /dev/null 2>&1 
+        echo -e "[\e[32mInfo\e[0m] Creating SlowDNS directory."
 
-            echo -e "[\e[33mNotice\e[0m] Enabling SlowDNS service..."
-            sudo systemctl enable slowdns > /dev/null 2>&1
+        mkdir -p -m 755 /etc/slowdns
 
-            echo -e "[\e[33mNotice\e[0m] Starting SlowDNS service..."
-            sudo systemctl start slowdns.service > /dev/null 2>&1
 
-            echo -e "[\e[33mNotice\e[0m] Checking the status of SlowDNS service..."
-            if sudo systemctl is-active slowdns.service &> /dev/null; then
-            echo -e "[\e[33mNotice\e[0m] SlowDNS service is running."
-            else
-            echo -e "[\e[33mNotice\e[0m] SlowDNS service is not running."
-            fi
-        }
-        reset
-        echo -n -e "[\e[32mInfo\e[0m]" && echo -e " Installing SlowDNS Complete." | lolcat
-        reset
+        echo "$SUBDOMAIN" > /etc/slowdns/subd.txt
+
+        echo "$NSDOMAIN" > /etc/slowdns/ns.txt
+
+        echo -e "[\e[32mInfo\e[0m] Downloading SlowDNS files."
+
+        wget -O /etc/slowdns/slowdns \
+        https://raw.githubusercontent.com/nontikweed/aio/main/slowdns \
+        > /dev/null 2>&1
+
+        chmod +x /etc/slowdns/slowdns
+
+        cat > /etc/slowdns/server.key <<EOF
+39a475f6c980d39007ae00e1c8f922b5eb1bd88b33071919a735cdafb5ab2389
+EOF
+
+        cat > /etc/slowdns/server.pub <<EOF
+15f2caeefeb017bab2ca8f5c72e3d3719333f3f56a8ca2078480109772f6406c
+EOF
+
+
+        NSNAME="$(cat /etc/slowdns/ns.txt)"
+
+        echo -e "[\e[32mInfo\e[0m] Configuring SlowDNS service."
+
+        cat > /etc/systemd/system/slowdns.service <<EOF
+[Unit]
+Description=Server SlowDNS By Nontikweed
+Documentation=https://nethubvpn.net
+After=network.target nss-lookup.target
+
+[Service]
+Type=simple
+User=root
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=/etc/slowdns/slowdns -udp :5300 -privkey-file /etc/slowdns/server.key $NSNAME 127.0.0.1:7300
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+        echo -e "[\e[33mNotice\e[0m] Reloading systemd daemon."
+
+        systemctl daemon-reload > /dev/null 2>&1
+
+        echo -e "[\e[33mNotice\e[0m] Enabling SlowDNS service."
+
+        systemctl enable slowdns > /dev/null 2>&1
+
+        echo -e "[\e[33mNotice\e[0m] Starting SlowDNS service."
+
+        systemctl restart slowdns.service > /dev/null 2>&1
+
+        echo -e "[\e[33mNotice\e[0m] Checking SlowDNS status."
+
+        if systemctl is-active slowdns.service \
+        > /dev/null 2>&1; then
+
+            echo -e "[\e[32mSuccess\e[0m] SlowDNS is running."
+
+        else
+
+            echo -e "[\e[31mFailed\e[0m] SlowDNS failed."
+
+        fi
     }
+
+    reset
+
+    echo -n -e "[\e[32mInfo\e[0m]"
+
+    echo -e " Installing SlowDNS Complete." | lolcat
+
+    reset
+}
 
     install_xray_vless_ws() {
 
