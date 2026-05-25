@@ -140,8 +140,6 @@ echo -e " Installing User API." | lolcat
 mkdir -p /root/api
 
 cat <<'EOFAPI' > /root/api/create-user.php
-
-
 <?php
 
 header('Content-Type: application/json');
@@ -205,7 +203,56 @@ echo json_encode([
 ]);
 EOFAPI
 
-    cat <<'EOFSTATUS' > /root/api/status.php
+cat <<'EOFDELETE' > /root/api/delete-user.php
+<?php
+
+header('Content-Type: application/json');
+
+$apiKey = $_POST['api_key'] ?? '';
+
+$username = $_POST['username'] ?? '';
+
+if ($apiKey !== 'xebecc') {
+
+    http_response_code(403);
+
+    exit(json_encode([
+
+        'status' => false,
+
+        'message' => 'Invalid API key'
+
+    ]));
+}
+
+if (empty($username)) {
+
+    exit(json_encode([
+
+        'status' => false,
+
+        'message' => 'Missing username'
+
+    ]));
+}
+
+$usernameSafe = escapeshellarg($username);
+
+shell_exec("
+    id {$usernameSafe} >/dev/null 2>&1 && \
+    userdel -r {$usernameSafe}
+");
+
+echo json_encode([
+
+    'status' => true,
+
+    'message' => 'User deleted'
+
+]);
+EOFDELETE
+
+cat <<'EOFSTATUS' > /root/api/status.php
 <?php
 
 header('Content-Type: application/json');
@@ -225,7 +272,7 @@ echo json_encode([
 ]);
 EOFSTATUS
 
-    cat <<'EOFSERVICE' > /etc/systemd/system/userapi.service
+cat <<'EOFSERVICE' > /etc/systemd/system/userapi.service
 [Unit]
 Description=User API Service
 After=network.target
@@ -241,10 +288,12 @@ User=root
 WantedBy=multi-user.target
 EOFSERVICE
 
-    systemctl daemon-reload
+systemctl daemon-reload
 
-    systemctl enable userapi >/dev/null 2>&1
-    systemctl restart userapi
+systemctl enable userapi >/dev/null 2>&1
+systemctl restart userapi
+
+chmod -R 755 /root/api
 
 }
 
