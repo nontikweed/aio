@@ -1518,7 +1518,10 @@ if (!$username) {
     ]));
 }
 
-$uuid = trim(shell_exec('cat /proc/sys/kernel/random/uuid'));
+$uuid = $_POST['uuid']
+    ?? trim(shell_exec(
+        'cat /proc/sys/kernel/random/uuid'
+    ));
 
 $config = json_decode(
     file_get_contents('/usr/local/etc/xray/config.json'),
