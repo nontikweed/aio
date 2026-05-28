@@ -304,8 +304,6 @@ reset
 
 }
 
-
-
 install_ssh() {
 
 
@@ -629,13 +627,13 @@ ifconfig-pool-persist /etc/openvpn/server/udpip.txt
 verb 3
 max-clients 450' > /etc/openvpn/server/server_udp.conf
 
-    echo '# OpenVPN TCP Configuration
+echo '# OpenVPN Configuration by Nontikweed :)
+
+dev tun
 port 1194
 proto tcp
 
-dev tun
 topology subnet
-
 server 10.20.0.0 255.255.252.0
 
 ca /etc/openvpn/server/ca.crt
@@ -646,51 +644,63 @@ dh none
 
 tls-server
 tls-version-min 1.2
+tls-cipher TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
 
-verify-client-cert none
-username-as-common-name
+cipher none
+ncp-disable
+auth none
 
-auth-user-pass-verify /etc/openvpn/auth.sh via-env
-script-security 3
+socket-flags TCP_NODELAY
 
-data-ciphers AES-256-GCM:AES-128-GCM
-data-ciphers-fallback AES-256-GCM
+sndbuf 0
+rcvbuf 0
 
 keepalive 10 120
 
 persist-key
 persist-tun
 
-sndbuf 0
-rcvbuf 0
-
-socket-flags TCP_NODELAY
-
-client-to-client
-duplicate-cn
-
-push "redirect-gateway def1 bypass-dhcp"
-push "dhcp-option DNS 1.1.1.1"
-push "dhcp-option DNS 8.8.8.8"
-
-push "persist-key"
-push "persist-tun"
-
-push "sndbuf 0"
-push "rcvbuf 0"
+ping-timer-rem
+reneg-sec 0
 
 user nobody
 group nogroup
 
+client-to-client
+duplicate-cn
+
+username-as-common-name
+
+verify-client-cert none
+client-cert-not-required
+
+script-security 3
+
+auth-user-pass-verify /etc/openvpn/auth.sh via-env
+
+push "socket-flags TCP_NODELAY"
+push "persist-key"
+push "persist-tun"
+
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.4.4"
+
+push "redirect-gateway def1 bypass-dhcp"
+
+push "sndbuf 0"
+push "rcvbuf 0"
+
 status /etc/openvpn/server/client.log
-status-version 3
 
 log /etc/openvpn/server/tcpserver.log
 
 ifconfig-pool-persist /etc/openvpn/server/tcpip.txt
 
+status-version 2
+
 verb 3
 max-clients 450' > /etc/openvpn/server/server_tcp.conf
+
 
     cat <<'EOF' > /etc/openvpn/server/ca.crt
 -----BEGIN CERTIFICATE-----
@@ -929,64 +939,76 @@ ifconfig-pool-persist /etc/openvpn/server/udpip.txt
 verb 3
 max-clients 450' > /etc/openvpn/server/server_udp.conf
 
-    echo '# OpenVPN Nontikweed Configuration
+echo '# OpenVPN Configuration by Nontikweed :)
+
+dev tun
 port 1194
 proto tcp
 
-dev tun
 topology subnet
-
 server 10.20.0.0 255.255.252.0
 
 ca /etc/openvpn/server/ca.crt
 cert /etc/openvpn/server/server.crt
 key /etc/openvpn/server/server.key
 
-dh /etc/openvpn/server/dh.pem
+dh none
 
 tls-server
 tls-version-min 1.2
+tls-cipher TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
 
-verify-client-cert none
-username-as-common-name
+cipher none
+ncp-disable
+auth none
 
-auth-user-pass-verify /etc/openvpn/auth.sh via-env
-script-security 3
+socket-flags TCP_NODELAY
 
-data-ciphers AES-256-GCM:AES-128-GCM
-data-ciphers-fallback AES-256-GCM
+sndbuf 0
+rcvbuf 0
 
 keepalive 10 120
 
 persist-key
 persist-tun
 
-sndbuf 0
-rcvbuf 0
-
-socket-flags TCP_NODELAY
-
-client-to-client
-duplicate-cn
-
-push "redirect-gateway def1 bypass-dhcp"
-push "dhcp-option DNS 1.1.1.1"
-push "dhcp-option DNS 8.8.8.8"
-
-push "persist-key"
-push "persist-tun"
-
-push "sndbuf 0"
-push "rcvbuf 0"
+ping-timer-rem
+reneg-sec 0
 
 user nobody
 group nogroup
 
-status-version 3
+client-to-client
+duplicate-cn
+
+username-as-common-name
+
+verify-client-cert none
+client-cert-not-required
+
+script-security 3
+
+auth-user-pass-verify /etc/openvpn/auth.sh via-env
+
+push "socket-flags TCP_NODELAY"
+push "persist-key"
+push "persist-tun"
+
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.4.4"
+
+push "redirect-gateway def1 bypass-dhcp"
+
+push "sndbuf 0"
+push "rcvbuf 0"
+
 status /etc/openvpn/server/client.log
+
 log /etc/openvpn/server/tcpserver.log
 
 ifconfig-pool-persist /etc/openvpn/server/tcpip.txt
+
+status-version 2
 
 verb 3
 max-clients 450' > /etc/openvpn/server/server_tcp.conf
@@ -1856,6 +1878,7 @@ EOF
     reset
     {
     rm -rf /root/*.sh
+    rm -rf /root/*.log
     rm -rf /root/*.sh.x
     rm -rf /etc/slowdns/*.sh
     echo -e ""
